@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Chronomancer
+Comment=An applet fonaging system timers
+Type=Application
+Icon=com.github.kit-foxboy.chronomancer
+Exec=chronomancer %F
+Terminal=false
+StartupNotify=true
+Categories=COSMIC
+Keywords=COSMIC
+MimeType=
