@@ -6,6 +6,7 @@ use i18n::init;
 mod app;
 mod config;
 mod i18n;
+mod components;
 
 fn main() -> Result {
     // Get the system's preferred languages.
