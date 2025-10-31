@@ -1,33 +1,27 @@
 // SPDX-License-Identifier: MIT
 
 use crate::config::Config;
-use crate::fl;
-use cosmic::app::context_drawer;
 use cosmic::cosmic_config::{self, CosmicConfigEntry};
-use cosmic::iced::alignment::{Horizontal, Vertical};
-use cosmic::iced::{Alignment, Length, Subscription};
-use cosmic::prelude::*;
-use cosmic::widget::{self, about::About, icon, menu, nav_bar};
-use cosmic::{cosmic_theme, theme};
+use cosmic::iced::Subscription;
+// use cosmic::widget::svg::Handle;
+use cosmic::widget::{icon, menu};
+use cosmic::{Action, Task};
 use futures_util::SinkExt;
 use std::collections::HashMap;
 
 const REPOSITORY: &str = env!("CARGO_PKG_REPOSITORY");
-const APP_ICON: &[u8] = include_bytes!("../resources/icons/hicolor/scalable/apps/icon.svg");
+const APP_ICON: &[u8] = include_bytes!("../resources/icons/hicolor/scalable/apps/hourglass.svg");
 
 /// The application model stores app-specific state used to describe its interface and
 /// drive its logic.
 pub struct AppModel {
     /// Application state which is managed by the COSMIC runtime.
     core: cosmic::Core,
-    /// Display a context drawer with the designated page if defined.
-    context_page: ContextPage,
-    /// The about page for this app.
-    about: About,
-    /// Contains items assigned to the nav bar panel.
-    nav: nav_bar::Model,
-    /// Key bindings for the application's menu bar.
-    key_binds: HashMap<menu::KeyBind, MenuAction>,
+    /// Key bindings for the application
+    // will look into this for more keyboard friendly UX as most cosmic apps are very lacking
+    key_binds: HashMap<menu::KeyBind, ()>,
+    /// The icon button displayed in the system tray.
+    icon_name: String,
     // Configuration data that persists between application runs.
     config: Config,
 }
@@ -35,24 +29,18 @@ pub struct AppModel {
 /// Messages emitted by the application and its widgets.
 #[derive(Debug, Clone)]
 pub enum Message {
-    SubscriptionChannel,
-    ToggleContextPage(ContextPage),
+    TogglePopup,
     UpdateConfig(Config),
     LaunchUrl(String),
+    SubscriptionChannel,
 }
 
 /// Create a COSMIC application from the app model
 impl cosmic::Application for AppModel {
-    /// The async executor that will be used to run your application's commands.
     type Executor = cosmic::executor::Default;
-
-    /// Data that your application receives to its init method.
     type Flags = ();
-
-    /// Messages which the application and its widgets will emit.
     type Message = Message;
 
-    /// Unique identifier in RDNN (reverse domain name notation) format.
     const APP_ID: &'static str = "com.github.kit-foxboy.chronomancer";
 
     fn core(&self) -> &cosmic::Core {
@@ -68,40 +56,11 @@ impl cosmic::Application for AppModel {
         core: cosmic::Core,
         _flags: Self::Flags,
     ) -> (Self, Task<cosmic::Action<Self::Message>>) {
-        // Create a nav bar with three page items.
-        let mut nav = nav_bar::Model::default();
-
-        nav.insert()
-            .text(fl!("page-id", num = 1))
-            .data::<Page>(Page::Page1)
-            .icon(icon::from_name("applications-science-symbolic"))
-            .activate();
-
-        nav.insert()
-            .text(fl!("page-id", num = 2))
-            .data::<Page>(Page::Page2)
-            .icon(icon::from_name("applications-system-symbolic"));
-
-        nav.insert()
-            .text(fl!("page-id", num = 3))
-            .data::<Page>(Page::Page3)
-            .icon(icon::from_name("applications-games-symbolic"));
-
-        // Create the about widget
-        let about = About::default()
-            .name(fl!("app-title"))
-            .icon(widget::icon::from_svg_bytes(APP_ICON))
-            .version(env!("CARGO_PKG_VERSION"))
-            .links([(fl!("repository"), REPOSITORY)])
-            .license(env!("CARGO_PKG_LICENSE"));
-
         // Construct the app model with the runtime's core.
-        let mut app = AppModel {
+        let app = AppModel {
             core,
-            context_page: ContextPage::default(),
-            about,
-            nav,
             key_binds: HashMap::new(),
+            icon_name: "com.github.kit-foxboy.chronomancer".to_string(),
             // Optional configuration file for an application.
             config: cosmic_config::Config::new(Self::APP_ID, Config::VERSION)
                 .map(|context| match Config::get_entry(&context) {
@@ -117,56 +76,15 @@ impl cosmic::Application for AppModel {
                 .unwrap_or_default(),
         };
 
-        // Create a startup command that sets the window title.
-        let command = app.update_title();
-
-        (app, command)
-    }
-
-    /// Elements to pack at the start of the header bar.
-    fn header_start(&self) -> Vec<Element<'_, Self::Message>> {
-        let menu_bar = menu::bar(vec![menu::Tree::with_children(
-            menu::root(fl!("view")).apply(Element::from),
-            menu::items(
-                &self.key_binds,
-                vec![menu::Item::Button(fl!("about"), None, MenuAction::About)],
-            ),
-        )]);
-
-        vec![menu_bar.into()]
-    }
-
-    /// Enables the COSMIC application to create a nav bar with this model.
-    fn nav_model(&self) -> Option<&nav_bar::Model> {
-        Some(&self.nav)
-    }
-
-    /// Display a context drawer if the context page is requested.
-    fn context_drawer(&self) -> Option<context_drawer::ContextDrawer<'_, Self::Message>> {
-        if !self.core.window.show_context {
-            return None;
-        }
-
-        Some(match self.context_page {
-            ContextPage::About => context_drawer::about(
-                &self.about,
-                |url| Message::LaunchUrl(url.to_string()),
-                Message::ToggleContextPage(ContextPage::About),
-            ),
-        })
+        (app, Task::none())
     }
 
     /// Describes the interface based on the current state of the application model.
-    ///
-    /// Application events will be processed through the view. Any messages emitted by
-    /// events received by widgets will be passed to the update method.
-    fn view(&self) -> Element<'_, Self::Message> {
-        widget::text::title1(fl!("welcome"))
-            .apply(widget::container)
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .align_x(Horizontal::Center)
-            .align_y(Vertical::Center)
+    fn view(&'_ self) -> cosmic::Element<'_, Message> {
+        self.core
+            .applet
+            .icon_button(&self.icon_name)
+            .on_press_down(Message::TogglePopup)
             .into()
     }
 
@@ -211,15 +129,10 @@ impl cosmic::Application for AppModel {
                 // For example purposes only.
             }
 
-            Message::ToggleContextPage(context_page) => {
-                if self.context_page == context_page {
-                    // Close the context drawer if the toggled context page is the same.
-                    self.core.window.show_context = !self.core.window.show_context;
-                } else {
-                    // Open the context drawer to display the requested context page.
-                    self.context_page = context_page;
-                    self.core.window.show_context = true;
-                }
+            Message::TogglePopup => {
+                // Toggle the popup/main panel visibility.
+                // TODO: integrate with COSMIC panel popup APIs to actually show/hide the popup.
+                Self::toggle_popup();
             }
 
             Message::UpdateConfig(config) => {
@@ -235,59 +148,21 @@ impl cosmic::Application for AppModel {
         }
         Task::none()
     }
-
-    /// Called when a nav item is selected.
-    fn on_nav_select(&mut self, id: nav_bar::Id) -> Task<cosmic::Action<Self::Message>> {
-        // Activate the page in the model.
-        self.nav.activate(id);
-
-        self.update_title()
-    }
 }
 
 impl AppModel {
-    /// Updates the header and window titles.
-    pub fn update_title(&mut self) -> Task<cosmic::Action<Message>> {
-        let mut window_title = fl!("app-title");
-
-        if let Some(page) = self.nav.text(self.nav.active()) {
-            window_title.push_str(" — ");
-            window_title.push_str(page);
-        }
-
-        if let Some(id) = self.core.main_window_id() {
-            self.set_window_title(window_title, id)
-        } else {
-            Task::none()
-        }
+    /// Toggles the main panel visibility.
+    fn toggle_popup() {
+        println!("TOGGLE! Toggle is such a silly word, don't you think?");
     }
 }
 
-/// The page to display in the application.
-pub enum Page {
-    Page1,
-    Page2,
-    Page3,
-}
+// TODO: Implement menu actions as needed. Might try to use this for keyboard shortcuts
+// impl menu::action::MenuAction for MenuAction {
+//     type Message = Message;
 
-/// The context page to display in the context drawer.
-#[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
-pub enum ContextPage {
-    #[default]
-    About,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum MenuAction {
-    About,
-}
-
-impl menu::action::MenuAction for MenuAction {
-    type Message = Message;
-
-    fn message(&self) -> Self::Message {
-        match self {
-            MenuAction::About => Message::ToggleContextPage(ContextPage::About),
-        }
-    }
-}
+//     fn message(&self) -> Self::Message {
+//         match self {
+//         }
+//     }
+// }

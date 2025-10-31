@@ -6,7 +6,7 @@
   <name>Chronomancer</name>
   <summary>An applet fonaging system timers</summary>
   <icon type="remote" width="64" height="64" scale="1">
-    https://github.com/kit-foxboy/chronomancer/raw/main/resources/icons/hicolor/scalable/apps/icon.svg
+    https://github.com/kit-foxboy/chronomancer/raw/main/resources/icons/hicolor/scalable/apps/hourglass.svg
   </icon>
   <url type="vcs-browser">https://github.com/kit-foxboy/chronomancer</url>
   <launchable type="desktop-id">com.github.kit-foxboy.chronomancer.desktop</launchable>
