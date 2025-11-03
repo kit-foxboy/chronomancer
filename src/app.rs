@@ -1,19 +1,18 @@
 // SPDX-License-Identifier: MIT
 
-use crate::config::Config;
 use cosmic::{
     Action, Application, Core, Element, Task, applet,
     cosmic_config::{self, CosmicConfigEntry},
     cosmic_theme::Spacing,
-    iced::{Limits, Alignment, platform_specific::shell::commands::popup, stream, window},
-    iced_futures::subscription::Subscription,
+    iced::{Alignment, Limits, platform_specific::shell::commands::popup, window},
     iced_runtime::Appearance,
     iced_widget::{column, row},
     theme,
     widget::{button, menu, text},
 };
-use futures_util::SinkExt;
 use std::collections::HashMap;
+use crate::{config::Config, utils::database::{SQLiteDatabase, respository::Repository}};
+use crate::models::Timer;
 
 // const REPOSITORY: &str = env!("CARGO_PKG_REPOSITORY");
 // const APP_ICON: &[u8] = include_bytes!("../resources/icons/hicolor/scalable/apps/hourglass.svg");
@@ -32,6 +31,9 @@ pub struct AppModel {
     config: Config,
     /// Popup window
     popup: Option<window::Id>,
+    /// Database connection
+    // clone when passing to async tasks to add to the pool's reference count
+    database: Option<SQLiteDatabase>,
 }
 
 /// Messages emitted by the application and its widgets.
@@ -39,10 +41,12 @@ pub struct AppModel {
 pub enum Message {
     TogglePopup,
     UpdateConfig(Config),
-    LaunchUrl(String),
-    SubscriptionChannel,
-    NewTimer(u32),
+    DatabaseInitialized(Result<SQLiteDatabase, String>),
+    NewTimer(i32),
+    TimerCreated(Result<Timer, String>)
 }
+
+pub const APP_ID: &str = "com.github.kit-foxboy.chronomancer";
 
 /// Create a COSMIC application from the app model
 impl Application for AppModel {
@@ -50,7 +54,7 @@ impl Application for AppModel {
     type Flags = ();
     type Message = Message;
 
-    const APP_ID: &'static str = "com.github.kit-foxboy.chronomancer";
+    const APP_ID: &'static str = APP_ID;
 
     fn core(&self) -> &cosmic::Core {
         &self.core
@@ -84,24 +88,32 @@ impl Application for AppModel {
                 })
                 .unwrap_or_default(),
             popup: None,
+            database: None,
         };
 
-        (app, Task::none())
+        (
+            app,
+            Task::perform(
+                async move { SQLiteDatabase::new().await.map_err(|e| e.to_string()) },
+                |result| Action::App(Message::DatabaseInitialized(result)),
+            ),
+        )
     }
 
     /// Define the view window for the application.
     fn view_window(&self, id: window::Id) -> Element<'_, Self::Message> {
-        let Spacing { space_s, .. } = theme::active().cosmic().spacing;
+        let Spacing { space_xxs, space_s, .. } = theme::active().cosmic().spacing;
         if matches!(self.popup, Some(p) if p == id) {
             let quick_timers = row![
                 button::standard("5 minutes").on_press(Message::NewTimer(300)),
                 button::standard("10 minutes").on_press(Message::NewTimer(600)),
                 button::standard("15 minutes").on_press(Message::NewTimer(900)),
-            ].spacing(space_s);
+            ]
+            .spacing(space_s);
 
             let content = column![text("Quick Timers:").size(24), quick_timers]
                 .align_x(Alignment::Center)
-                .padding([8, 0])
+                .padding(space_xxs)
                 .spacing(space_s);
 
             self.core
@@ -128,66 +140,50 @@ impl Application for AppModel {
         Some(applet::style())
     }
 
-    /// Register subscriptions for this application.
-    ///
-    /// Subscriptions are long-running async tasks running in the background which
-    /// emit messages to the application through a channel. They are started at the
-    /// beginning of the application, and persist through its lifetime.
-    fn subscription(&self) -> Subscription<Self::Message> {
-        struct MySubscription;
-
-        Subscription::batch(vec![
-            // Create a subscription which emits updates through a channel.
-            Subscription::run_with_id(
-                std::any::TypeId::of::<MySubscription>(),
-                stream::channel(4, move |mut channel| async move {
-                    _ = channel.send(Message::SubscriptionChannel).await;
-
-                    futures_util::future::pending().await
-                }),
-            ),
-            // Watch for application configuration changes.
-            self.core()
-                .watch_config::<Config>(Self::APP_ID)
-                .map(|update| {
-                    // for why in update.errors {
-                    //     tracing::error!(?why, "app config error");
-                    // }
-
-                    Message::UpdateConfig(update.config)
-                }),
-        ])
-    }
-
     /// Handles messages emitted by the application and its widgets.
     ///
     /// Tasks may be returned for asynchronous execution of code in the background
     /// on the application's async runtime.
     fn update(&mut self, message: Self::Message) -> Task<Action<Self::Message>> {
         match message {
-            Message::SubscriptionChannel => {
-                // For example purposes only.
-            }
-
             Message::TogglePopup => {
                 let task = self.toggle_popup();
                 return task.map(|_| Action::None);
             }
 
+            Message::DatabaseInitialized(result) => {
+                match result {
+                    Ok(db) => {
+                        println!("Database initialized successfully: {:?}", db);
+                        self.database = Some(db);
+                    }
+                    Err(err) => {
+                        eprintln!("Failed to initialize database: {}", err);
+                    }
+                }
+            }
+
             Message::NewTimer(timer_length) => {
-                println!("Starting new timer for {} seconds", timer_length);
+                let timer = Timer::new(timer_length, false);
+
+                if let Some(database) = self.database.clone() {
+                    return Task::perform(
+                        async move { Timer::insert(database.pool(), &timer).await.map_err(|e| e.to_string()) },
+                        |result| Action::App(Message::TimerCreated(result)),
+                    );
+                } else {
+                    eprintln!("Database not yet available");
+                }   
+            }
+
+            Message::TimerCreated(timer) => {
+                // Todo: refresh lists of timers
+                println!("{:#?}", timer);
             }
 
             Message::UpdateConfig(config) => {
                 self.config = config;
             }
-
-            Message::LaunchUrl(url) => match open::that_detached(&url) {
-                Ok(()) => {}
-                Err(err) => {
-                    eprintln!("failed to open {url:?}: {err}");
-                }
-            },
         }
         Task::none()
     }
@@ -215,7 +211,6 @@ impl AppModel {
 
             // Set minimum size limits for the popup
             popup_settings.positioner.size_limits = Limits::NONE.min_width(300.0).min_height(150.0);
-
             popup::get_popup::<Message>(popup_settings)
         }
     }

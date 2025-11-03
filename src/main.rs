@@ -7,6 +7,8 @@ mod app;
 mod config;
 mod i18n;
 mod components;
+mod utils;
+mod models;
 
 fn main() -> Result {
     // Get the system's preferred languages.
