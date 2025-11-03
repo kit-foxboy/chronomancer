@@ -10,9 +10,12 @@ pub trait Repository<T> {
     /// Fetches all items from the repository.
     async fn get_all(pool: &SqlitePool) -> anyhow::Result<Vec<T>>;
 
+    /// Fetches all active items from the repository.
+    async fn get_all_active(pool: &SqlitePool) -> anyhow::Result<Vec<T>>;
+
     /// Retrieves an item by its ID.
-    async fn get_by_id(pool: &SqlitePool, id: i64) -> anyhow::Result<Option<T>>;
+    async fn get_by_id(pool: &SqlitePool, id: &i64) -> anyhow::Result<Option<T>>;
 
     /// Deletes an item by its ID.
-    async fn delete_by_id(pool: &SqlitePool, id: i64) -> anyhow::Result<()>;
+    async fn delete_by_id(pool: &SqlitePool, id: &i64) -> anyhow::Result<()>;
 }

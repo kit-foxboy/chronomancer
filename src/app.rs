@@ -4,15 +4,21 @@ use cosmic::{
     Action, Application, Core, Element, Task, applet,
     cosmic_config::{self, CosmicConfigEntry},
     cosmic_theme::Spacing,
-    iced::{Alignment, Limits, platform_specific::shell::commands::popup, window},
+    iced::{Alignment, Limits, Subscription, platform_specific::shell::commands::popup, window},
     iced_runtime::Appearance,
     iced_widget::{column, row},
     theme,
     widget::{button, menu, text},
 };
+use futures_util::SinkExt;
+use notify_rust::{Hint, Notification};
 use std::collections::HashMap;
-use crate::{config::Config, utils::database::{SQLiteDatabase, respository::Repository}};
+
 use crate::models::Timer;
+use crate::{
+    config::Config,
+    utils::database::{SQLiteDatabase, respository::Repository},
+};
 
 // const REPOSITORY: &str = env!("CARGO_PKG_REPOSITORY");
 // const APP_ICON: &[u8] = include_bytes!("../resources/icons/hicolor/scalable/apps/hourglass.svg");
@@ -34,6 +40,8 @@ pub struct AppModel {
     /// Database connection
     // clone when passing to async tasks to add to the pool's reference count
     database: Option<SQLiteDatabase>,
+    /// Active timers
+    active_timers: Vec<Timer>,
 }
 
 /// Messages emitted by the application and its widgets.
@@ -42,8 +50,10 @@ pub enum Message {
     TogglePopup,
     UpdateConfig(Config),
     DatabaseInitialized(Result<SQLiteDatabase, String>),
+    ActiveTimersFetched(Result<Vec<Timer>, String>),
+    TimerTick,
     NewTimer(i32),
-    TimerCreated(Result<Timer, String>)
+    TimerCreated(Result<Timer, String>),
 }
 
 pub const APP_ID: &str = "com.github.kit-foxboy.chronomancer";
@@ -73,7 +83,7 @@ impl Application for AppModel {
         let app = AppModel {
             core,
             key_binds: HashMap::new(),
-            icon_name: "com.github.kit-foxboy.chronomancer".to_string(),
+            icon_name: Self::APP_ID.to_string(),
             // Optional configuration file for an application.
             config: cosmic_config::Config::new(Self::APP_ID, Config::VERSION)
                 .map(|context| match Config::get_entry(&context) {
@@ -89,6 +99,7 @@ impl Application for AppModel {
                 .unwrap_or_default(),
             popup: None,
             database: None,
+            active_timers: vec![],
         };
 
         (
@@ -102,7 +113,9 @@ impl Application for AppModel {
 
     /// Define the view window for the application.
     fn view_window(&self, id: window::Id) -> Element<'_, Self::Message> {
-        let Spacing { space_xxs, space_s, .. } = theme::active().cosmic().spacing;
+        let Spacing {
+            space_xxs, space_s, ..
+        } = theme::active().cosmic().spacing;
         if matches!(self.popup, Some(p) if p == id) {
             let quick_timers = row![
                 button::standard("5 minutes").on_press(Message::NewTimer(300)),
@@ -151,14 +164,63 @@ impl Application for AppModel {
                 return task.map(|_| Action::None);
             }
 
-            Message::DatabaseInitialized(result) => {
-                match result {
-                    Ok(db) => {
-                        println!("Database initialized successfully: {:?}", db);
-                        self.database = Some(db);
-                    }
-                    Err(err) => {
-                        eprintln!("Failed to initialize database: {}", err);
+            Message::DatabaseInitialized(result) => match result {
+                Ok(db) => {
+                    println!("Database initialized successfully: {:?}", db);
+                    self.database = Some(db);
+
+                    let db = self.database.clone().unwrap();
+                    return Task::perform(
+                        async move {
+                            Timer::get_all_active(db.pool())
+                                .await
+                                .map_err(|e| e.to_string())
+                        },
+                        |result| Action::App(Message::ActiveTimersFetched(result)),
+                    );
+                }
+                Err(err) => {
+                    eprintln!("Failed to initialize database: {}", err);
+                }
+            },
+
+            Message::ActiveTimersFetched(timers) => match timers {
+                Ok(timers) => {
+                    self.active_timers = timers;
+                }
+                Err(err) => {
+                    eprintln!("Failed to fetch active timers: {}", err);
+                }
+            },
+
+            Message::TimerTick => {
+                for timer in self.active_timers.clone() {
+                    if !timer.is_active() {
+                        if let Err(e) = Notification::new()
+                            .summary("Timer Finished")
+                            .body("Quick timer has ellapsed!")
+                            .icon("alarm")
+                            .hint(Hint::Category("alarm".to_owned()))
+                            .hint(Hint::Resident(true)) 
+                            .timeout(0)
+                            .show()
+                        {
+                            eprintln!("Failed to send notification: {}", e);
+                        }
+
+                        // Remove finished timer from active timers and delete from database
+                        self.active_timers.retain(|t| t.id != timer.id);
+                        if let Some(database) = self.database.clone() {
+                            return Task::perform(
+                                async move {
+                                    Timer::delete_by_id(database.pool(), &timer.id)
+                                        .await
+                                        .map_err(|e| e.to_string())
+                                },
+                                |_result| Action::<Message>::None,
+                                // fails silently for now, removing timers isn't critical
+                            );
+                        }
                     }
                 }
             }
@@ -168,24 +230,65 @@ impl Application for AppModel {
 
                 if let Some(database) = self.database.clone() {
                     return Task::perform(
-                        async move { Timer::insert(database.pool(), &timer).await.map_err(|e| e.to_string()) },
+                        async move {
+                            Timer::insert(database.pool(), &timer)
+                                .await
+                                .map_err(|e| e.to_string())
+                        },
                         |result| Action::App(Message::TimerCreated(result)),
                     );
                 } else {
                     eprintln!("Database not yet available");
-                }   
+                }
             }
 
-            Message::TimerCreated(timer) => {
-                // Todo: refresh lists of timers
-                println!("{:#?}", timer);
-            }
+            Message::TimerCreated(timer) => match timer {
+                Ok(timer) => {
+                    self.active_timers.push(timer);
+                    println!("Created timer: {:#?}", &self.active_timers.last());
+                }
+                Err(err) => {
+                    eprintln!("Failed to create timer: {}", err);
+                }
+            },
 
             Message::UpdateConfig(config) => {
                 self.config = config;
             }
         }
         Task::none()
+    }
+
+    /// Register subscriptions for this application.
+    ///
+    /// Subscriptions are long-running async tasks running in the background which
+    /// emit messages to the application through a channel. They are started at the
+    /// beginning of the application, and persist through its lifetime.
+    /// Good example uses are to watch for configuration file changes or keyboard events.
+    fn subscription(&self) -> Subscription<Self::Message> {
+        struct TimerSubscription;
+
+        Subscription::batch(vec![
+            // Timer tick subscription - fires every second
+            Subscription::run_with_id(
+                std::any::TypeId::of::<TimerSubscription>(),
+                cosmic::iced::stream::channel(4, move |mut channel| async move {
+                    let mut interval = tokio::time::interval(std::time::Duration::from_secs(1));
+                    
+                    loop {
+                        interval.tick().await;
+                        if channel.send(Message::TimerTick).await.is_err() {
+                            // Channel closed, exit the subscription
+                            break;
+                        }
+                    }
+                }),
+            ),
+            // Watch for application configuration changes.
+            self.core()
+                .watch_config::<Config>(Self::APP_ID)
+                .map(|update| Message::UpdateConfig(update.config)),
+        ])
     }
 }
 
