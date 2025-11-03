@@ -1,59 +1,70 @@
 // SPDX-License-Identifier: MIT
 
-use crate::config::Config;
-use crate::fl;
-use cosmic::app::context_drawer;
-use cosmic::cosmic_config::{self, CosmicConfigEntry};
-use cosmic::iced::alignment::{Horizontal, Vertical};
-use cosmic::iced::{Alignment, Length, Subscription};
-use cosmic::prelude::*;
-use cosmic::widget::{self, about::About, icon, menu, nav_bar};
-use cosmic::{cosmic_theme, theme};
+use cosmic::{
+    Action, Application, Core, Element, Task, applet,
+    cosmic_config::{self, CosmicConfigEntry},
+    cosmic_theme::Spacing,
+    iced::{Alignment, Limits, Subscription, platform_specific::shell::commands::popup, window},
+    iced_runtime::Appearance,
+    iced_widget::{column, row},
+    theme,
+    widget::{button, menu, text},
+};
 use futures_util::SinkExt;
+use notify_rust::{Hint, Notification};
 use std::collections::HashMap;
 
-const REPOSITORY: &str = env!("CARGO_PKG_REPOSITORY");
-const APP_ICON: &[u8] = include_bytes!("../resources/icons/hicolor/scalable/apps/icon.svg");
+use crate::models::Timer;
+use crate::{
+    config::Config,
+    utils::database::{SQLiteDatabase, respository::Repository},
+};
+
+// const REPOSITORY: &str = env!("CARGO_PKG_REPOSITORY");
+// const APP_ICON: &[u8] = include_bytes!("../resources/icons/hicolor/scalable/apps/hourglass.svg");
 
 /// The application model stores app-specific state used to describe its interface and
 /// drive its logic.
 pub struct AppModel {
     /// Application state which is managed by the COSMIC runtime.
-    core: cosmic::Core,
-    /// Display a context drawer with the designated page if defined.
-    context_page: ContextPage,
-    /// The about page for this app.
-    about: About,
-    /// Contains items assigned to the nav bar panel.
-    nav: nav_bar::Model,
-    /// Key bindings for the application's menu bar.
-    key_binds: HashMap<menu::KeyBind, MenuAction>,
+    core: Core,
+    /// Key bindings for the application
+    // will look into this for more keyboard friendly UX as most cosmic apps are very lacking
+    key_binds: HashMap<menu::KeyBind, ()>,
+    /// The icon button displayed in the system tray.
+    icon_name: String,
     // Configuration data that persists between application runs.
     config: Config,
+    /// Popup window
+    popup: Option<window::Id>,
+    /// Database connection
+    // clone when passing to async tasks to add to the pool's reference count
+    database: Option<SQLiteDatabase>,
+    /// Active timers
+    active_timers: Vec<Timer>,
 }
 
 /// Messages emitted by the application and its widgets.
 #[derive(Debug, Clone)]
 pub enum Message {
-    SubscriptionChannel,
-    ToggleContextPage(ContextPage),
+    TogglePopup,
     UpdateConfig(Config),
-    LaunchUrl(String),
+    DatabaseInitialized(Result<SQLiteDatabase, String>),
+    ActiveTimersFetched(Result<Vec<Timer>, String>),
+    TimerTick,
+    NewTimer(i32),
+    TimerCreated(Result<Timer, String>),
 }
 
+pub const APP_ID: &str = "com.github.kit-foxboy.chronomancer";
+
 /// Create a COSMIC application from the app model
-impl cosmic::Application for AppModel {
-    /// The async executor that will be used to run your application's commands.
+impl Application for AppModel {
     type Executor = cosmic::executor::Default;
-
-    /// Data that your application receives to its init method.
     type Flags = ();
-
-    /// Messages which the application and its widgets will emit.
     type Message = Message;
 
-    /// Unique identifier in RDNN (reverse domain name notation) format.
-    const APP_ID: &'static str = "com.github.kit-foxboy.chronomancer";
+    const APP_ID: &'static str = APP_ID;
 
     fn core(&self) -> &cosmic::Core {
         &self.core
@@ -68,40 +79,11 @@ impl cosmic::Application for AppModel {
         core: cosmic::Core,
         _flags: Self::Flags,
     ) -> (Self, Task<cosmic::Action<Self::Message>>) {
-        // Create a nav bar with three page items.
-        let mut nav = nav_bar::Model::default();
-
-        nav.insert()
-            .text(fl!("page-id", num = 1))
-            .data::<Page>(Page::Page1)
-            .icon(icon::from_name("applications-science-symbolic"))
-            .activate();
-
-        nav.insert()
-            .text(fl!("page-id", num = 2))
-            .data::<Page>(Page::Page2)
-            .icon(icon::from_name("applications-system-symbolic"));
-
-        nav.insert()
-            .text(fl!("page-id", num = 3))
-            .data::<Page>(Page::Page3)
-            .icon(icon::from_name("applications-games-symbolic"));
-
-        // Create the about widget
-        let about = About::default()
-            .name(fl!("app-title"))
-            .icon(widget::icon::from_svg_bytes(APP_ICON))
-            .version(env!("CARGO_PKG_VERSION"))
-            .links([(fl!("repository"), REPOSITORY)])
-            .license(env!("CARGO_PKG_LICENSE"));
-
         // Construct the app model with the runtime's core.
-        let mut app = AppModel {
+        let app = AppModel {
             core,
-            context_page: ContextPage::default(),
-            about,
-            nav,
             key_binds: HashMap::new(),
+            icon_name: Self::APP_ID.to_string(),
             // Optional configuration file for an application.
             config: cosmic_config::Config::new(Self::APP_ID, Config::VERSION)
                 .map(|context| match Config::get_entry(&context) {
@@ -115,59 +97,166 @@ impl cosmic::Application for AppModel {
                     }
                 })
                 .unwrap_or_default(),
+            popup: None,
+            database: None,
+            active_timers: vec![],
         };
 
-        // Create a startup command that sets the window title.
-        let command = app.update_title();
-
-        (app, command)
-    }
-
-    /// Elements to pack at the start of the header bar.
-    fn header_start(&self) -> Vec<Element<'_, Self::Message>> {
-        let menu_bar = menu::bar(vec![menu::Tree::with_children(
-            menu::root(fl!("view")).apply(Element::from),
-            menu::items(
-                &self.key_binds,
-                vec![menu::Item::Button(fl!("about"), None, MenuAction::About)],
+        (
+            app,
+            Task::perform(
+                async move { SQLiteDatabase::new().await.map_err(|e| e.to_string()) },
+                |result| Action::App(Message::DatabaseInitialized(result)),
             ),
-        )]);
-
-        vec![menu_bar.into()]
+        )
     }
 
-    /// Enables the COSMIC application to create a nav bar with this model.
-    fn nav_model(&self) -> Option<&nav_bar::Model> {
-        Some(&self.nav)
-    }
+    /// Define the view window for the application.
+    fn view_window(&self, id: window::Id) -> Element<'_, Self::Message> {
+        let Spacing {
+            space_xxs, space_s, ..
+        } = theme::active().cosmic().spacing;
+        if matches!(self.popup, Some(p) if p == id) {
+            let quick_timers = row![
+                button::standard("5 minutes").on_press(Message::NewTimer(300)),
+                button::standard("10 minutes").on_press(Message::NewTimer(600)),
+                button::standard("15 minutes").on_press(Message::NewTimer(900)),
+            ]
+            .spacing(space_s);
 
-    /// Display a context drawer if the context page is requested.
-    fn context_drawer(&self) -> Option<context_drawer::ContextDrawer<'_, Self::Message>> {
-        if !self.core.window.show_context {
-            return None;
+            let content = column![text("Quick Timers:").size(24), quick_timers]
+                .align_x(Alignment::Center)
+                .padding(space_xxs)
+                .spacing(space_s);
+
+            self.core
+                .applet
+                .popup_container(content)
+                .max_height(400.)
+                .max_width(500.)
+                .into()
+        } else {
+            text("").into()
         }
-
-        Some(match self.context_page {
-            ContextPage::About => context_drawer::about(
-                &self.about,
-                |url| Message::LaunchUrl(url.to_string()),
-                Message::ToggleContextPage(ContextPage::About),
-            ),
-        })
     }
 
     /// Describes the interface based on the current state of the application model.
-    ///
-    /// Application events will be processed through the view. Any messages emitted by
-    /// events received by widgets will be passed to the update method.
-    fn view(&self) -> Element<'_, Self::Message> {
-        widget::text::title1(fl!("welcome"))
-            .apply(widget::container)
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .align_x(Horizontal::Center)
-            .align_y(Vertical::Center)
+    fn view(&'_ self) -> cosmic::Element<'_, Message> {
+        self.core
+            .applet
+            .icon_button(&self.icon_name)
+            .on_press_down(Message::TogglePopup)
             .into()
+    }
+
+    fn style(&self) -> Option<Appearance> {
+        Some(applet::style())
+    }
+
+    /// Handles messages emitted by the application and its widgets.
+    ///
+    /// Tasks may be returned for asynchronous execution of code in the background
+    /// on the application's async runtime.
+    fn update(&mut self, message: Self::Message) -> Task<Action<Self::Message>> {
+        match message {
+            Message::TogglePopup => {
+                let task = self.toggle_popup();
+                return task.map(|_| Action::None);
+            }
+
+            Message::DatabaseInitialized(result) => match result {
+                Ok(db) => {
+                    println!("Database initialized successfully: {:?}", db);
+                    self.database = Some(db);
+
+                    let db = self.database.clone().unwrap();
+                    return Task::perform(
+                        async move {
+                            Timer::get_all_active(db.pool())
+                                .await
+                                .map_err(|e| e.to_string())
+                        },
+                        |result| Action::App(Message::ActiveTimersFetched(result)),
+                    );
+                }
+                Err(err) => {
+                    eprintln!("Failed to initialize database: {}", err);
+                }
+            },
+
+            Message::ActiveTimersFetched(timers) => match timers {
+                Ok(timers) => {
+                    self.active_timers = timers;
+                }
+                Err(err) => {
+                    eprintln!("Failed to fetch active timers: {}", err);
+                }
+            },
+
+            Message::TimerTick => {
+                for timer in self.active_timers.clone() {
+                    if !timer.is_active() {
+                        if let Err(e) = Notification::new()
+                            .summary("Timer Finished")
+                            .body("Quick timer has ellapsed!")
+                            .icon("alarm")
+                            .hint(Hint::Category("alarm".to_owned()))
+                            .hint(Hint::Resident(true)) 
+                            .timeout(0)
+                            .show()
+                        {
+                            eprintln!("Failed to send notification: {}", e);
+                        }
+
+                        // Remove finished timer from active timers and delete from database
+                        self.active_timers.retain(|t| t.id != timer.id);
+                        if let Some(database) = self.database.clone() {
+                            return Task::perform(
+                                async move {
+                                    Timer::delete_by_id(database.pool(), &timer.id)
+                                        .await
+                                        .map_err(|e| e.to_string())
+                                },
+                                |_result| Action::<Message>::None,
+                                // fails silently for now, removing timers isn't critical
+                            );
+                        }
+                    }
+                }
+            }
+
+            Message::NewTimer(timer_length) => {
+                let timer = Timer::new(timer_length, false);
+
+                if let Some(database) = self.database.clone() {
+                    return Task::perform(
+                        async move {
+                            Timer::insert(database.pool(), &timer)
+                                .await
+                                .map_err(|e| e.to_string())
+                        },
+                        |result| Action::App(Message::TimerCreated(result)),
+                    );
+                } else {
+                    eprintln!("Database not yet available");
+                }
+            }
+
+            Message::TimerCreated(timer) => match timer {
+                Ok(timer) => {
+                    self.active_timers.push(timer);
+                    println!("Created timer: {:#?}", &self.active_timers.last());
+                }
+                Err(err) => {
+                    eprintln!("Failed to create timer: {}", err);
+                }
+            },
+
+            Message::UpdateConfig(config) => {
+                self.config = config;
+            }
+        }
+        Task::none()
     }
 
     /// Register subscriptions for this application.
@@ -175,119 +264,67 @@ impl cosmic::Application for AppModel {
     /// Subscriptions are long-running async tasks running in the background which
     /// emit messages to the application through a channel. They are started at the
     /// beginning of the application, and persist through its lifetime.
+    /// Good example uses are to watch for configuration file changes or keyboard events.
     fn subscription(&self) -> Subscription<Self::Message> {
-        struct MySubscription;
+        struct TimerSubscription;
 
         Subscription::batch(vec![
-            // Create a subscription which emits updates through a channel.
+            // Timer tick subscription - fires every second
             Subscription::run_with_id(
-                std::any::TypeId::of::<MySubscription>(),
+                std::any::TypeId::of::<TimerSubscription>(),
                 cosmic::iced::stream::channel(4, move |mut channel| async move {
-                    _ = channel.send(Message::SubscriptionChannel).await;
-
-                    futures_util::future::pending().await
+                    let mut interval = tokio::time::interval(std::time::Duration::from_secs(1));
+                    
+                    loop {
+                        interval.tick().await;
+                        if channel.send(Message::TimerTick).await.is_err() {
+                            // Channel closed, exit the subscription
+                            break;
+                        }
+                    }
                 }),
             ),
             // Watch for application configuration changes.
             self.core()
                 .watch_config::<Config>(Self::APP_ID)
-                .map(|update| {
-                    // for why in update.errors {
-                    //     tracing::error!(?why, "app config error");
-                    // }
-
-                    Message::UpdateConfig(update.config)
-                }),
+                .map(|update| Message::UpdateConfig(update.config)),
         ])
-    }
-
-    /// Handles messages emitted by the application and its widgets.
-    ///
-    /// Tasks may be returned for asynchronous execution of code in the background
-    /// on the application's async runtime.
-    fn update(&mut self, message: Self::Message) -> Task<cosmic::Action<Self::Message>> {
-        match message {
-            Message::SubscriptionChannel => {
-                // For example purposes only.
-            }
-
-            Message::ToggleContextPage(context_page) => {
-                if self.context_page == context_page {
-                    // Close the context drawer if the toggled context page is the same.
-                    self.core.window.show_context = !self.core.window.show_context;
-                } else {
-                    // Open the context drawer to display the requested context page.
-                    self.context_page = context_page;
-                    self.core.window.show_context = true;
-                }
-            }
-
-            Message::UpdateConfig(config) => {
-                self.config = config;
-            }
-
-            Message::LaunchUrl(url) => match open::that_detached(&url) {
-                Ok(()) => {}
-                Err(err) => {
-                    eprintln!("failed to open {url:?}: {err}");
-                }
-            },
-        }
-        Task::none()
-    }
-
-    /// Called when a nav item is selected.
-    fn on_nav_select(&mut self, id: nav_bar::Id) -> Task<cosmic::Action<Self::Message>> {
-        // Activate the page in the model.
-        self.nav.activate(id);
-
-        self.update_title()
     }
 }
 
 impl AppModel {
-    /// Updates the header and window titles.
-    pub fn update_title(&mut self) -> Task<cosmic::Action<Message>> {
-        let mut window_title = fl!("app-title");
-
-        if let Some(page) = self.nav.text(self.nav.active()) {
-            window_title.push_str(" — ");
-            window_title.push_str(page);
-        }
-
-        if let Some(id) = self.core.main_window_id() {
-            self.set_window_title(window_title, id)
+    /// Toggles the main panel visibility.
+    fn toggle_popup(&mut self) -> Task<Message> {
+        if let Some(p) = self.popup.take() {
+            // Close the popup if it is open.
+            popup::destroy_popup::<Message>(p)
         } else {
-            Task::none()
+            // create new popup
+            let new_id = window::Id::unique();
+            self.popup.replace(new_id);
+
+            // Get the popup settings from the applet
+            let mut popup_settings = self.core.applet.get_popup_settings(
+                self.core.main_window_id().unwrap(),
+                new_id,
+                Some((500, 500)),
+                None,
+                None,
+            );
+
+            // Set minimum size limits for the popup
+            popup_settings.positioner.size_limits = Limits::NONE.min_width(300.0).min_height(150.0);
+            popup::get_popup::<Message>(popup_settings)
         }
     }
 }
 
-/// The page to display in the application.
-pub enum Page {
-    Page1,
-    Page2,
-    Page3,
-}
+// TODO: Implement menu actions as needed. Might try to use this for keyboard shortcuts
+// impl menu::action::MenuAction for MenuAction {
+//     type Message = Message;
 
-/// The context page to display in the context drawer.
-#[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
-pub enum ContextPage {
-    #[default]
-    About,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum MenuAction {
-    About,
-}
-
-impl menu::action::MenuAction for MenuAction {
-    type Message = Message;
-
-    fn message(&self) -> Self::Message {
-        match self {
-            MenuAction::About => Message::ToggleContextPage(ContextPage::About),
-        }
-    }
-}
+//     fn message(&self) -> Self::Message {
+//         match self {
+//         }
+//     }
+// }
