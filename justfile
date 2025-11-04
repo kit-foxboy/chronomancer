@@ -23,6 +23,10 @@ icons-dst := clean(rootdir / prefix) / 'share' / 'icons' / 'hicolor'
 icon-svg-src := icons-src / 'scalable' / 'apps' / 'hourglass.svg'
 icon-svg-dst := icons-dst / 'scalable' / 'apps' / appid + '.svg'
 
+# Custom icon directory for chronomancer-specific icons
+custom-icons-src := icons-src / 'scalable' / 'apps'
+custom-icons-dst := icons-dst / 'scalable' / 'apps'
+
 # Default recipe which runs `just build-release`
 default: build-release
 
@@ -60,14 +64,22 @@ run *args:
 
 # Installs files
 install:
+    #!/usr/bin/env sh
+    set -eu
     install -Dm0755 {{bin-src}} {{bin-dst}}
     install -Dm0644 resources/app.desktop {{desktop-dst}}
     install -Dm0644 resources/app.metainfo.xml {{appdata-dst}}
     install -Dm0644 {{icon-svg-src}} {{icon-svg-dst}}
+    for icon in {{custom-icons-src}}/*.svg; do
+        name="${icon##*/}"
+        install -Dm0644 "$icon" {{custom-icons-dst}}/chronomancer-"$name"
+    done
 
 # Uninstalls installed files
 uninstall:
     rm {{bin-dst}} {{desktop-dst}} {{icon-svg-dst}}
+    # Remove all custom chronomancer icons
+    rm -f {{custom-icons-dst}}/chronomancer-*.svg
 
 # Vendor dependencies locally
 vendor:

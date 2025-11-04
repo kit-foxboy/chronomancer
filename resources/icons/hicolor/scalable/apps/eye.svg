@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="24" height="24" viewBox="0 0 24 24" version="1.1">
+    <!-- Generator: Sketch 43.2 (39069) - http://www.bohemiancoding.com/sketch -->
+    <!-- Modified for COSMIC theme adaptation: converted strokes to fills -->
+    <title>eye</title>
+    <desc>Created with Sketch.</desc>
+    <defs/>
+    <g id="Page-1" fill="currentColor" fill-rule="evenodd">
+        <g id="Artboard-4" transform="translate(-268.000000, -203.000000)">
+            <g id="46" transform="translate(268.000000, 203.000000)">
+                <!-- Eye outline with 2px stroke converted to fill -->
+                <path d="M12,3 C5,3 1,11.5 1,11.5 L1.15,11.75 C1.38,12.16 2.36,13.86 3.89,15.39 C5.89,17.39 8.56,19 12,19 C15.44,19 18.11,17.39 20.11,15.39 C21.64,13.86 22.62,12.16 22.85,11.75 L23,11.5 C23,11.5 19,3 12,3 Z M12,5 C17.5,5 20.5,11 20.5,11 C20.5,11 18.09,17 12,17 C5.91,17 3.5,11 3.5,11 C3.5,11 6.5,5 12,5 Z" id="Path-80"/>
+                <!-- Center circle with 2px stroke converted to fill (3+1=4 outer, 3-1=2 inner radius) -->
+                <path d="M12,8 C9.79,8 8,9.79 8,12 C8,14.21 9.79,16 12,16 C14.21,16 16,14.21 16,12 C16,9.79 14.21,8 12,8 Z M12,10 C13.11,10 14,10.89 14,12 C14,13.11 13.11,14 12,14 C10.89,14 10,13.11 10,12 C10,10.89 10.89,10 12,10 Z" id="Oval-50"/>
+                <!-- Top ray -->
+                <rect x="11" y="2" width="2" height="3" id="Path-81-top" rx="1"/>
+                <!-- Top-right ray -->
+                <rect x="17.5" y="4.5" width="2.5" height="2" id="Path-81-tr" rx="1" transform="translate(18.75, 5.5) rotate(45) translate(-18.75, -5.5)"/>
+                <!-- Right ray -->
+                <rect x="21" y="9" width="2.5" height="2" id="Path-81-r" rx="1"/>
+                <!-- Left ray -->
+                <rect x="0.5" y="9" width="2.5" height="2" id="Path-81-l" rx="1"/>
+                <!-- Top-left ray -->
+                <rect x="4" y="4.5" width="2.5" height="2" id="Path-81-tl" rx="1" transform="translate(5.25, 5.5) rotate(-45) translate(-5.25, -5.5)"/>
+            </g>
+        </g>
+    </g>
+</svg>

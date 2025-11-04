@@ -5,18 +5,18 @@ use cosmic::{
     cosmic_config::{self, CosmicConfigEntry},
     iced::{Limits, Subscription, platform_specific::shell::commands::popup, window},
     iced_runtime::Appearance,
-    widget::{menu, text},
+    widget::text,
 };
 use futures_util::SinkExt;
 use notify_rust::{Hint, Notification};
 
-use crate::models::{Timer, TimerMessage};
+use crate::{components::Component, models::{PowerMessage, Timer, TimerMessage}};
 use crate::{
     config::Config,
     utils::database::{DatabaseMessage, Repository, SQLiteDatabase},
 };
 
-use crate::components::quick_timers;
+use crate::components::{quick_timers, PowerControls};
 
 // const REPOSITORY: &str = env!("CARGO_PKG_REPOSITORY");
 // const APP_ICON: &[u8] = include_bytes!("../resources/icons/hicolor/scalable/apps/hourglass.svg");
@@ -40,6 +40,11 @@ pub struct AppModel {
     database: Option<SQLiteDatabase>,
     /// Active timers
     active_timers: Vec<Timer>,
+    /// Power control state
+    stay_awake_active: bool,
+    /// Power control component
+    power_controls: PowerControls,
+    
 }
 
 /// Messages emitted by the application and its widgets.
@@ -50,6 +55,7 @@ pub enum Message {
     Tick,
     DatabaseMessage(DatabaseMessage),
     TimerMessage(TimerMessage),
+    PowerMessage(PowerMessage),
 }
 
 pub const APP_ID: &str = "com.github.kit-foxboy.chronomancer";
@@ -96,6 +102,8 @@ impl Application for AppModel {
             popup: None,
             database: None,
             active_timers: vec![],
+            stay_awake_active: false,
+            power_controls: PowerControls::new(),
         };
 
         (
@@ -134,9 +142,13 @@ impl Application for AppModel {
                 ),
             ]);
 
+            let power = self.power_controls.view().map(Message::PowerMessage);
+            let content = cosmic::iced_widget::column![quick_timers, power]
+                .spacing(cosmic::theme::active().cosmic().spacing.space_m);
+
             self.core
                 .applet
-                .popup_container(quick_timers)
+                .popup_container(content)
                 .max_height(400.)
                 .max_width(600.)
                 .into()
@@ -172,6 +184,8 @@ impl Application for AppModel {
             Message::DatabaseMessage(msg) => self.handle_database_message(msg),
 
             Message::TimerMessage(msg) => self.handle_timer_message(msg),
+
+            Message::PowerMessage(msg) => self.handle_power_message(msg),
 
             Message::Tick => self.handle_tick(),
 
@@ -354,6 +368,20 @@ impl AppModel {
                     eprintln!("Failed to fetch active timers: {}", err);
                 }
             },
+        }
+        Task::none()
+    }
+
+    fn handle_power_message(&mut self, msg: PowerMessage) -> Task<Action<Message>> {
+        match msg {
+            PowerMessage::ToggleStayAwake => {
+                self.stay_awake_active = !self.stay_awake_active;
+                // TODO: Implement systemd inhibit logic here
+                println!("Stay awake toggled: {}", self.stay_awake_active);
+            }
+            _ => {
+                // Other power messages are handled in the component update
+            }
         }
         Task::none()
     }

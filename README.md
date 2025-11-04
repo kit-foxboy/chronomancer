@@ -54,4 +54,4 @@ Developers should install [rustup][rustup] and configure their editor to use [ru
 [sccache]: https://github.com/mozilla/sccache
 
 ## Credit
-Hourglass icon by Robbie Pearce from the [Softies](https://www.robbiepearce.com/softies/) icon set, used under the [Creative Commons Attribution 3.0 License](https://creativecommons.org/licenses/by/3.0/).
+Hourglass and eye icons by Robbie Pearce from the [Softies](https://www.robbiepearce.com/softies/) icon set, used under the [Creative Commons Attribution 3.0 License](https://creativecommons.org/licenses/by/3.0/).
