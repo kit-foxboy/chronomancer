@@ -11,6 +11,13 @@ pub struct Timer {
     pub created_at: i64, // Unix timestamp
 }
 
+#[derive(Debug, Clone)]
+pub enum TimerMessage {
+    New(i32, bool),
+    Created(Result<Timer, String>),
+    ActiveFetched(Result<Vec<Timer>, String>),
+}
+
 impl Timer {
     pub fn new(duration_seconds: i32, is_recurring: bool) -> Self {
         Self {
