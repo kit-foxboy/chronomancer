@@ -1,5 +1,16 @@
 // SPDX-License-Identifier: MIT
 
+use std::{fs::File, sync::Arc};
+
+use crate::{
+    components::{Component, PowerControls, quick_timers},
+    config::Config,
+    models::{PowerMessage, Timer, TimerMessage},
+    utils::{
+        database::{DatabaseMessage, Repository, SQLiteDatabase},
+        resources,
+    },
+};
 use cosmic::{
     Action, Application, Core, Element, Task, applet,
     cosmic_config::{self, CosmicConfigEntry},
@@ -9,14 +20,6 @@ use cosmic::{
 };
 use futures_util::SinkExt;
 use notify_rust::{Hint, Notification};
-
-use crate::{components::Component, models::{PowerMessage, Timer, TimerMessage}};
-use crate::{
-    config::Config,
-    utils::database::{DatabaseMessage, Repository, SQLiteDatabase},
-};
-
-use crate::components::{quick_timers, PowerControls};
 
 // const REPOSITORY: &str = env!("CARGO_PKG_REPOSITORY");
 // const APP_ICON: &[u8] = include_bytes!("../resources/icons/hicolor/scalable/apps/hourglass.svg");
@@ -38,13 +41,12 @@ pub struct AppModel {
     /// Database connection
     // clone when passing to async tasks to add to the pool's reference count
     database: Option<SQLiteDatabase>,
+    /// Suspend inhibitor file descriptor. Keep this alive to prevent system sleep.
+    suspend_inhibitor: Option<File>,
     /// Active timers
     active_timers: Vec<Timer>,
-    /// Power control state
-    stay_awake_active: bool,
     /// Power control component
     power_controls: PowerControls,
-    
 }
 
 /// Messages emitted by the application and its widgets.
@@ -101,20 +103,22 @@ impl Application for AppModel {
                 .unwrap_or_default(),
             popup: None,
             database: None,
+            suspend_inhibitor: None,
             active_timers: vec![],
-            stay_awake_active: false,
-            power_controls: PowerControls::new(),
+            power_controls: PowerControls::default(),
         };
 
         (
             app,
             Task::perform(
                 async move { SQLiteDatabase::new().await.map_err(|e| e.to_string()) },
-                |result| {
-                    match result {
-                        Ok(db) => Action::App(Message::DatabaseMessage(DatabaseMessage::Initialized(Ok(db)))),
-                        Err(err) => Action::App(Message::DatabaseMessage(DatabaseMessage::FailedToInitialize(err))),
-                    }
+                |result| match result {
+                    Ok(db) => Action::App(Message::DatabaseMessage(DatabaseMessage::Initialized(
+                        Ok(db),
+                    ))),
+                    Err(err) => Action::App(Message::DatabaseMessage(
+                        DatabaseMessage::FailedToInitialize(err),
+                    )),
                 },
             ),
         )
@@ -373,11 +377,50 @@ impl AppModel {
     }
 
     fn handle_power_message(&mut self, msg: PowerMessage) -> Task<Action<Message>> {
+        // let _ = self.power_controls.update(&msg);
         match msg {
             PowerMessage::ToggleStayAwake => {
-                self.stay_awake_active = !self.stay_awake_active;
-                // TODO: Implement systemd inhibit logic here
-                println!("Stay awake toggled: {}", self.stay_awake_active);
+                if let Some(inhibitor) = self.suspend_inhibitor.take() {
+                    // Release the inhibitor by dropping it
+                    resources::release_suspend_inhibit(inhibitor);
+                    println!("Released suspend inhibitor");
+                } else {
+                    // Acquire new inhibitor
+                    return Task::perform(
+                        async move {
+                            resources::acquire_suspend_inhibit(
+                                "Chronomancer",
+                                "User requested stay-awake mode",
+                                "block",
+                            )
+                            .await
+                            .map_err(|e| e.to_string())
+                        },
+                        |result| {
+                            Action::<Message>::App(Message::PowerMessage(
+                                PowerMessage::InhibitAcquired(Arc::new(result)),
+                            ))
+                        },
+                    );
+                }
+            }
+            PowerMessage::InhibitAcquired(result) => {
+                match Arc::try_unwrap(result) {
+                    Ok(Ok(file)) => {
+                        // Successfully unwrapped the Arc and got the File
+                        self.suspend_inhibitor = Some(file);
+                        println!("Successfully acquired suspend inhibitor");
+                    }
+                    Ok(Err(err)) => {
+                        eprintln!("Failed to acquire inhibit: {}", err);
+                    }
+                    Err(arc) => {
+                        // Multiple Arc references exist - this shouldn't happen in normal flow
+                        // but handle it gracefully
+                        eprintln!("Cannot take ownership: Arc has multiple references (count: {})", 
+                            Arc::strong_count(&arc));
+                    }
+                }
             }
             _ => {
                 // Other power messages are handled in the component update

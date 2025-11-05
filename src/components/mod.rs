@@ -14,5 +14,5 @@ pub use power_controls::PowerControls;
 // Use if stateful components are needed in the future
 pub trait Component<Message: Clone + Debug> {
     fn view(&self) -> Element<'_, Message>;
-    fn update(&mut self, message: Message) -> Task<Action<Message>>;
+    fn update(&mut self, message: &Message) -> Task<Action<Message>>;
 }

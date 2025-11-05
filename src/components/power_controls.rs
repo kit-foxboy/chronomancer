@@ -16,8 +16,8 @@ pub struct PowerControls {
     pub shutdown_time: String,
 }
 
-impl PowerControls {
-    pub fn new() -> Self {
+impl Default for PowerControls {
+    fn default() -> Self {
         Self {
             stay_awake_active: false,
             suspend_time: String::new(),
@@ -49,28 +49,15 @@ impl Component<PowerMsg> for PowerControls {
             .into()
     }
 
-    fn update(&mut self, message: PowerMsg) -> Task<Action<PowerMsg>> {
+    fn update(&mut self, message: &PowerMsg) -> Task<Action<PowerMsg>> {
         match message {
-            PowerMsg::ToggleStayAwake => {
-                self.stay_awake_active = !self.stay_awake_active;
-            }
-            PowerMsg::SetSuspendTime(time) => {
-                self.suspend_time = time;
-            }
-            PowerMsg::SetLogoutTime(time) => {
-                self.logout_time = time;
-            }
-            PowerMsg::SetShutdownTime(time) => {
-                self.shutdown_time = time;
-            }
-            PowerMsg::ExecuteSuspend => {
-                // TODO: Implement systemd suspend
-            }
-            PowerMsg::ExecuteLogout => {
-                // TODO: Implement logout
-            }
-            PowerMsg::ExecuteShutdown => {
-                // TODO: Implement shutdown
+            // PowerMsg::InhibitAcquired(result) => {
+            //     // if let Ok(manager) = result.as_ref() {
+            //     //     self.stay_awake_active = manager.is_active();
+            //     // }
+            // }
+            _ => {
+                // Handle other power messages
             }
         }
         Task::none()

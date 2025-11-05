@@ -166,35 +166,6 @@ CREATE TABLE timers (
     created_at INTEGER NOT NULL
 );
 
--- Reminders (recurring or one-time)
-CREATE TABLE reminders (
-    id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL,
-    reminder_time INTEGER NOT NULL,  -- Unix timestamp
-    recurrence TEXT,  -- NULL, "daily", "weekly", "monthly"
-    is_active INTEGER NOT NULL DEFAULT 1,
-    last_triggered INTEGER,
-    created_at INTEGER NOT NULL
-);
-
--- systemd Services (user-created timer definitions)
-CREATE TABLE systemd_services (
-    id INTEGER PRIMARY KEY,
-    name TEXT UNIQUE NOT NULL,
-    description TEXT,
-    schedule TEXT NOT NULL,  -- OnCalendar= format
-    command TEXT NOT NULL,
-    is_enabled INTEGER NOT NULL DEFAULT 0,
-    created_at INTEGER NOT NULL
-);
-
--- Settings
-CREATE TABLE settings (
-    key TEXT PRIMARY KEY,
-    value TEXT NOT NULL
-);
-```
-
 ## Project Structure
 
 ```
@@ -234,8 +205,29 @@ chronomancer/
 // ✅ DO: Import commonly-used types at module level
 use cosmic::{Action, Task, Element};
 
+// ✅ DO: Nest imports for clarity, structure, and brevity
+use crate::{
+    components::{Component, PowerControls, quick_timers},
+    config::Config,
+    models::{PowerMessage, Timer, TimerMessage},
+    utils::{
+        database::{DatabaseMessage, Repository, SQLiteDatabase},
+        resources,
+    },
+};
+
+// ✅ DO: Use type aliases for commonly-used complex types if needed
+type DbResult<T> = Result<T, anyhow::Error>;
+
 // ❌ DON'T: Use full paths everywhere
 cosmic::Action::App(cosmic::app::Message::...)
+
+// ❌ DON'T: Use functions, structs, or traits more than one item deep.
+let element = cosmic::widget::container(...);
+
+// ❌ DON'T: import multiple items from the same module separately
+use cosmic::Action;
+use cosmic::Task;
 ```
 
 ### Message Design
@@ -267,6 +259,47 @@ fn build_timer_card(timer: &Timer) -> Element<Message> {
 }
 ```
 
+### Message Passing Strategy
+```rust
+// App -> Page -> Component
+fn view(&self) -> Element<Message> {
+    components::popup()
+        .section(components::active_timers(&self.timers))
+        .section(components::quick_actions())
+        .footer(components::settings_button())
+}
+
+// Each page will forward messages so components can use generic Message type
+fn update(&mut self, message: PageMessage) {
+    match message {
+        PageMessage::TimerStarted(name, duration) => {
+            self.start_timer(name, duration);
+        }
+        PageMessage::QuickAction(action) => {
+            self.handle_quick_action(action);
+        }
+    }
+}
+
+// Components emit Messages but don't handle them directly
+pub trait Component {
+    fn view(&self) -> Element<Message>;
+}
+
+pub trait Page {
+    fn view(&self) -> Element<Message>;
+    fn update(&mut self, message: PageMessage);
+}
+
+fn quick_actions() -> Element<Message> {
+    widget::row()
+        .push(
+            widget::button("5 min")
+                .on_press(Message::StartTimer("Quick 5 min".into(), Duration::from_secs(300)))
+        )
+        .into()
+}
+```
 ## Learning & Development Approach
 
 This project is a **learning exercise**. When assisting:
