@@ -6,6 +6,7 @@ use i18n::init;
 mod app;
 mod config;
 mod i18n;
+mod pages;
 mod components;
 mod utils;
 mod models;

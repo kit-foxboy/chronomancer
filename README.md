@@ -53,5 +53,11 @@ Developers should install [rustup][rustup] and configure their editor to use [ru
 [mold]: https://github.com/rui314/mold
 [sccache]: https://github.com/mozilla/sccache
 
+## Important Note
+Agentic AI has been used to generate document templates and rapidly prototype design patterns. Cosmic is still extremely new, and there aren't strong opinions on best practices and patterns yet, so this can and will evolve over time. This documentation serves more as a journal of the learning process than definitive documentation or standards. No generated code is used in production and only serves as high level examples of possible approaches. I'm against outsourcing critical thinking but I do see the value in using AI to help brainstorm and explore ideas rapidly. I find a rubber duck that talks back and writes notes and snippets of patterns I've whiteboarded to be super useful tbh. On the off chance you're a programmer reading about my dumb little project, don't be demoralized that AI is everywhere now. Remember that you're in charge and AI still makes shit up all the time. Hang in there. Just because knowing a language isn't enough to be competitive in the job market doesn't mean that you don't have a role. It's up to you to actually KNOW how things work and be able to maintain them. I've always felt technology is always supposed to make life better for humans and in my own microscopic way, I want to contribute to that. Leave the tedium to skynet and don't give up on the world of computing or yourself.
+
+"Don't be a tech bro, the world has enough of that. What we need now is for the honest to God nerds to make loving technology respectable, ethical, and worthwhile again." 
+- Kit
+
 ## Credit
 Hourglass and eye icons by Robbie Pearce from the [Softies](https://www.robbiepearce.com/softies/) icon set, used under the [Creative Commons Attribution 3.0 License](https://creativecommons.org/licenses/by/3.0/).

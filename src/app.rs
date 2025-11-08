@@ -1,26 +1,37 @@
 // SPDX-License-Identifier: MIT
 
-use std::{fs::File, sync::Arc};
-
-use crate::{
-    components::{Component, PowerControls, quick_timers},
-    config::Config,
-    models::{PowerMessage, Timer, TimerMessage},
-    utils::{
-        database::{DatabaseMessage, Repository, SQLiteDatabase},
-        resources,
-    },
-};
 use cosmic::{
     Action, Application, Core, Element, Task, applet,
     cosmic_config::{self, CosmicConfigEntry},
-    iced::{Limits, Subscription, platform_specific::shell::commands::popup, window},
+    cosmic_theme::Spacing,
+    iced::{
+        Limits, 
+        Subscription, 
+        platform_specific::shell::commands::popup, 
+        widget::column, 
+        window,
+    },
     iced_runtime::Appearance,
+    theme,
     widget::text,
 };
 use futures_util::SinkExt;
 use notify_rust::{Hint, Notification};
+use std::{fs::File, sync::Arc};
 
+use crate::{
+    components::quick_timers,
+    config::Config,
+    models::Timer,
+    pages::{Page, PowerControls},
+    utils::{
+        database::{Repository, SQLiteDatabase},
+        messages::{
+            AppMessage as Message, DatabaseMessage, PageMessage, PowerMessage, TimerMessage,
+        },
+        resources,
+    },
+};
 // const REPOSITORY: &str = env!("CARGO_PKG_REPOSITORY");
 // const APP_ICON: &[u8] = include_bytes!("../resources/icons/hicolor/scalable/apps/hourglass.svg");
 
@@ -49,17 +60,6 @@ pub struct AppModel {
     power_controls: PowerControls,
 }
 
-/// Messages emitted by the application and its widgets.
-#[derive(Debug, Clone)]
-pub enum Message {
-    TogglePopup,
-    UpdateConfig(Config),
-    Tick,
-    DatabaseMessage(DatabaseMessage),
-    TimerMessage(TimerMessage),
-    PowerMessage(PowerMessage),
-}
-
 pub const APP_ID: &str = "com.github.kit-foxboy.chronomancer";
 
 /// Create a COSMIC application from the app model
@@ -79,10 +79,7 @@ impl Application for AppModel {
     }
 
     /// Initializes the application with any given flags and startup commands.
-    fn init(
-        core: cosmic::Core,
-        _flags: Self::Flags,
-    ) -> (Self, Task<cosmic::Action<Self::Message>>) {
+    fn init(core: cosmic::Core, _flags: Self::Flags) -> (Self, Task<cosmic::Action<Message>>) {
         // Construct the app model with the runtime's core.
         let app = AppModel {
             core,
@@ -125,8 +122,10 @@ impl Application for AppModel {
     }
 
     /// Define the view window for the application.
-    fn view_window(&self, id: window::Id) -> Element<'_, Self::Message> {
+    fn view_window(&self, id: window::Id) -> Element<'_, Message> {
         if matches!(self.popup, Some(p) if p == id) {
+            let Spacing { space_m, .. } = theme::active().cosmic().spacing;
+
             let quick_timers = quick_timers::quick_timers(vec![
                 (
                     "5 Min".to_string(),
@@ -146,9 +145,8 @@ impl Application for AppModel {
                 ),
             ]);
 
-            let power = self.power_controls.view().map(Message::PowerMessage);
-            let content = cosmic::iced_widget::column![quick_timers, power]
-                .spacing(cosmic::theme::active().cosmic().spacing.space_m);
+            let power = self.power_controls.view().map(|msg| Message::PageMessage(msg));
+            let content = column![quick_timers, power].spacing(space_m);
 
             self.core
                 .applet
@@ -184,6 +182,8 @@ impl Application for AppModel {
                 let t = self.toggle_popup();
                 t.map(|_| Action::<Message>::None)
             }
+
+            Message::PageMessage(msg) => self.handle_page_message(msg),
 
             Message::DatabaseMessage(msg) => self.handle_database_message(msg),
 
@@ -306,6 +306,14 @@ impl AppModel {
         result_task
     }
 
+    /// Handle messages from pages
+    // Todo: If necessary, expand to route to multiple pages
+    // applets work a little differently than full apps with multiple pages so unsure if this is problem
+    // attempting to define opinionated architecture around pages/components even in applets though
+    fn handle_page_message(&mut self, msg: PageMessage) -> Task<Action<Message>> {
+        return self.power_controls.update(msg);
+    }
+
     fn handle_database_message(&mut self, msg: DatabaseMessage) -> Task<Action<Message>> {
         match msg {
             DatabaseMessage::Initialized(result) => {
@@ -417,10 +425,16 @@ impl AppModel {
                     Err(arc) => {
                         // Multiple Arc references exist - this shouldn't happen in normal flow
                         // but handle it gracefully
-                        eprintln!("Cannot take ownership: Arc has multiple references (count: {})", 
-                            Arc::strong_count(&arc));
+                        eprintln!(
+                            "Cannot take ownership: Arc has multiple references (count: {})",
+                            Arc::strong_count(&arc)
+                        );
                     }
                 }
+            }
+            PowerMessage::SetSuspendTime(time) => {
+                println!("Setting suspend time to {} seconds", time);
+                // todo: implement suspend time setting logic
             }
             _ => {
                 // Other power messages are handled in the component update
