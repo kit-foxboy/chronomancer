@@ -9,3 +9,4 @@ seconds = Seconds
 minutes = Minutes
 hours = Hours
 days = Days
+time = Time

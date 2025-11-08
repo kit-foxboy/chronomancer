@@ -22,7 +22,7 @@ use std::{fs::File, sync::Arc};
 use crate::{
     components::quick_timers,
     config::Config,
-    models::Timer,
+    models::{Timer, timer::TimerType},
     pages::{Page, PowerControls},
     utils::{
         database::{Repository, SQLiteDatabase},
@@ -152,7 +152,7 @@ impl Application for AppModel {
                 .applet
                 .popup_container(content)
                 .max_height(400.)
-                .max_width(600.)
+                .max_width(800.)
                 .into()
         } else {
             text("").into()
@@ -262,21 +262,38 @@ impl AppModel {
     }
 
     fn handle_tick(&mut self) -> Task<Action<Message>> {
-        // Default to no async work; if we need to schedule a DB deletion we replace this.
-        let mut result_task: Task<Action<Message>> = Task::none();
+        let mut tasks: Vec<Task<Action<Message>>> = vec![];
 
         for timer in self.active_timers.clone() {
             if !timer.is_active() {
-                if let Err(e) = Notification::new()
-                    .summary("Timer Finished")
-                    .body("Quick timer has ellapsed!")
-                    .icon("alarm")
-                    .hint(Hint::Category("alarm".to_owned()))
-                    .hint(Hint::Resident(true))
-                    .timeout(0)
-                    .show()
-                {
-                    eprintln!("Failed to send notification: {}", e);
+                match TimerType::from_str(&timer.description) {
+                    TimerType::Suspend => {
+                        // Execute system suspend
+                        tasks.push(Task::done(Action::App(Message::PowerMessage(
+                            PowerMessage::ExecuteSuspend,
+                        ))));
+                    }
+                    TimerType::Logout => {
+                        // Execute system logout
+                    }
+                    TimerType::Shutdown => {
+                        tasks.push(Task::done(Action::App(Message::PowerMessage(
+                            PowerMessage::ExecuteShutdown,
+                        ))));
+                    }
+                    TimerType::UserDefined(ref description) => {
+                        if let Err(e) = Notification::new()
+                            .summary("Timer Finished")
+                            .body(description.as_str())
+                            .icon("alarm")
+                            .hint(Hint::Category("alarm".to_owned()))
+                            .hint(Hint::Resident(true))
+                            .timeout(0)
+                            .show()
+                        {
+                            eprintln!("Failed to send notification: {}", e);
+                        }
+                    }
                 }
 
                 // Capture the id before mutating the vector
@@ -287,14 +304,14 @@ impl AppModel {
 
                 if let Some(database) = self.database.clone() {
                     // Schedule an async task to delete the timer from the DB.
-                    result_task = Task::perform(
+                    tasks.push(Task::perform(
                         async move {
                             Timer::delete_by_id(database.pool(), &timer_id)
                                 .await
                                 .map_err(|e| e.to_string())
                         },
                         |_result| Action::<Message>::None,
-                    );
+                    ));
                     // We only schedule one deletion per tick; break to avoid multiple concurrent deletes
                     // We could easily batch them, but 1 second and some local db calls aren't going to be a big deal here
                     // More noting this to acknowledge potential optimizations XP
@@ -303,7 +320,7 @@ impl AppModel {
             }
         }
 
-        result_task
+        Task::batch(tasks)
     }
 
     /// Handle messages from pages
@@ -349,7 +366,7 @@ impl AppModel {
     fn handle_timer_message(&mut self, msg: TimerMessage) -> Task<Action<Message>> {
         match msg {
             TimerMessage::New(duration, is_recurring) => {
-                let timer = Timer::new(duration, is_recurring);
+                let timer = Timer::new(duration, is_recurring, TimerType::UserDefined("Quick Timer".to_string()));
                 if let Some(database) = self.database.clone() {
                     return Task::perform(
                         async move {
@@ -433,8 +450,46 @@ impl AppModel {
                 }
             }
             PowerMessage::SetSuspendTime(time) => {
-                println!("Setting suspend time to {} seconds", time);
-                // todo: implement suspend time setting logic
+                let suspend_timer = Timer::new(time, false, TimerType::Suspend);
+
+                if let Some(database) = self.database.clone() {
+                    return Task::perform(
+                        async move {
+                            Timer::insert(database.pool(), &suspend_timer)
+                                .await
+                                .map_err(|e| e.to_string())
+                        },
+                        |result| Action::App(Message::TimerMessage(TimerMessage::Created(result))),
+                    );
+                } else {
+                    eprintln!("Database not yet available");
+                }
+            }
+            PowerMessage::SetShutdownTime(time) => {
+                let shutdown_timer = Timer::new(time, false, TimerType::Shutdown);
+
+                if let Some(database) = self.database.clone() {
+                    return Task::perform(
+                        async move {
+                            Timer::insert(database.pool(), &shutdown_timer)
+                                .await
+                                .map_err(|e| e.to_string())
+                        },
+                        |result| Action::App(Message::TimerMessage(TimerMessage::Created(result))),
+                    );
+                } else {
+                    eprintln!("Database not yet available");
+                }
+            }
+            PowerMessage::ExecuteSuspend => {
+                if let Err(e) = resources::execute_system_suspend() {
+                    eprintln!("Failed to suspend system: {}", e);
+                }
+            }
+            PowerMessage::ExecuteShutdown => {
+                if let Err(e) = resources::execute_system_shutdown() {
+                    eprintln!("Failed to shutdown system: {}", e);
+                }
             }
             _ => {
                 // Other power messages are handled in the component update

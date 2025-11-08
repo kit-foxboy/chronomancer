@@ -9,6 +9,17 @@ pub enum TimeUnit {
     Days,
 }
 
+impl TimeUnit {
+    pub fn to_seconds_multiplier(&self) -> i32 {
+        match self {
+            TimeUnit::Seconds => 1,
+            TimeUnit::Minutes => 60,
+            TimeUnit::Hours => 3600,
+            TimeUnit::Days => 86400,
+        }
+    }
+}
+
 impl fmt::Display for TimeUnit {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {

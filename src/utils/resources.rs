@@ -1,9 +1,11 @@
 use anyhow::{Context, Result};
 use cosmic::{widget, Element};
-use std::fs::File;
-use std::os::fd::OwnedFd as StdOwnedFd;
-use zbus::zvariant::OwnedFd;
-use zbus::{Connection, Proxy};
+use std::{
+    fs::File,
+    os::fd::OwnedFd as StdOwnedFd,
+    process::Command,
+};
+use zbus::{Connection, Proxy, zvariant::OwnedFd};
 
 /// Load a system icon using icon::from_name
 pub fn system_icon<Message: 'static>(name: &str, size: u16) -> Element<'static, Message> {
@@ -49,4 +51,36 @@ pub async fn acquire_suspend_inhibit(who: &str, why: &str, mode: &str) -> Result
 /// This is just an explicit wrapper around drop() for clarity.
 pub fn release_suspend_inhibit(file: File) {
     drop(file);
+}
+
+pub fn execute_system_suspend() -> Result<()> {
+    let status = Command::new("systemctl")
+        .arg("suspend")
+        .status()
+        .context("Failed to execute systemctl suspend")?;
+
+    if status.success() {
+        Ok(())
+    } else {
+        Err(anyhow::anyhow!(
+            "systemctl suspend failed with status: {}",
+            status
+        ))
+    }
+}
+
+pub fn execute_system_shutdown() -> Result<()> {
+    let status = Command::new("systemctl")
+        .arg("poweroff")
+        .status()
+        .context("Failed to execute systemctl poweroff")?;
+
+    if status.success() {
+        Ok(())
+    } else {
+        Err(anyhow::anyhow!(
+            "systemctl poweroff failed with status: {}",
+            status
+        ))
+    }
 }

@@ -7,9 +7,6 @@ pub trait Repository<T> {
     /// Inserts a new item into the repository.
     async fn insert(pool: &SqlitePool, item: &T) -> anyhow::Result<T>;
 
-    /// Fetches all items from the repository.
-    async fn get_all(pool: &SqlitePool) -> anyhow::Result<Vec<T>>;
-
     /// Fetches all active items from the repository.
     async fn get_all_active(pool: &SqlitePool) -> anyhow::Result<Vec<T>>;
 

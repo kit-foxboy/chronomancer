@@ -64,7 +64,7 @@ impl Component for IconButtonForm {
 }
 
 impl IconButtonForm {
-    pub fn new(icon_name: &str, placeholder_text: &str) -> Self {
+    pub fn new(icon_name: impl Into<String>, placeholder_text: impl Into<String>) -> Self {
         Self {
             id: Id::unique(),
             input_value: String::new(),
@@ -75,8 +75,8 @@ impl IconButtonForm {
                 TimeUnit::Hours,
                 TimeUnit::Days,
             ]),
-            icon_name: icon_name.to_string(),
-            placeholder_text: placeholder_text.to_string(),
+            icon_name: icon_name.into(),
+            placeholder_text: placeholder_text.into(),
         }
     }
 }

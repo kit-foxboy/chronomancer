@@ -27,9 +27,9 @@ pub enum DatabaseMessage {
 pub enum PowerMessage {
     ToggleStayAwake,
     InhibitAcquired(Arc<Result<File, String>>),
-    SetSuspendTime(u32),
-    SetLogoutTime(u32),
-    SetShutdownTime(u32),
+    SetSuspendTime(i32),
+    SetLogoutTime(i32),
+    SetShutdownTime(i32),
     ExecuteSuspend,
     ExecuteLogout,
     ExecuteShutdown,

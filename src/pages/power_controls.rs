@@ -1,7 +1,8 @@
 use crate::{
-    components::{Component, icon_button, IconButtonForm},
+    components::{Component, IconButtonForm, icon_button},
     pages::Page,
-    utils::messages::{AppMessage, PageMessage, PowerMessage},
+    utils::{TimeUnit, messages::{AppMessage, PageMessage, PowerMessage}},
+    fl
 };
 use cosmic::{
     Action, Element, Task,
@@ -15,6 +16,8 @@ use cosmic::{
 pub struct PowerControls {
     pub stay_awake_active: bool,
     suspend_form: IconButtonForm,
+    logout_form: IconButtonForm,
+    shutdown_form: IconButtonForm,
 }
 
 impl Default for PowerControls {
@@ -23,8 +26,16 @@ impl Default for PowerControls {
             stay_awake_active: false,
             suspend_form: IconButtonForm::new(
                 "system-suspend-symbolic",
-                ""
-            )
+                fl!("time")
+            ),
+            logout_form: IconButtonForm::new(
+                "system-log-out-symbolic",
+                fl!("time")
+            ),
+            shutdown_form: IconButtonForm::new(
+                "system-shutdown-symbolic",
+                fl!("time")
+            ),
         }
     }
 }
@@ -42,9 +53,8 @@ impl Page for PowerControls {
                 PageMessage::StayAwakeButtonPressed,
             ),
             self.suspend_form.view().map(PageMessage::ComponentMessage),
-            // icon_button("system-suspend-symbolic", PowerMessage::SetSuspendTime("".to_string())),
-            // icon_button("system-log-out-symbolic", PowerMessage::SetLogoutTime("".to_string())),
-            // icon_button("system-shutdown-symbolic", PowerMessage::SetShutdownTime("".to_string())),
+            // self.logout_form.view().map(PageMessage::ComponentMessage),
+            self.shutdown_form.view().map(PageMessage::ComponentMessage),
         ]
         .spacing(space_s)
         .padding([0, space_s]);
@@ -66,26 +76,24 @@ impl Page for PowerControls {
             },
             PageMessage::FormSubmitted(id) => {
                 if id == self.suspend_form.id {
-                    if let Ok(value) = self.suspend_form.input_value.parse::<u32>() {
+                    if let Ok(value) = self.suspend_form.input_value.parse::<i32>() {
+                        let value = TimeUnit::to_seconds_multiplier(&self.suspend_form.time_unit) * value;
                         return Task::done(Action::App(AppMessage::PowerMessage(
                             PowerMessage::SetSuspendTime(value),
                         )));
                     }
                 }
+
+                if id == self.shutdown_form.id {
+                    if let Ok(value) = self.shutdown_form.input_value.parse::<i32>() {
+                        let value = TimeUnit::to_seconds_multiplier(&self.shutdown_form.time_unit) * value;
+                        return Task::done(Action::App(AppMessage::PowerMessage(
+                            PowerMessage::SetShutdownTime(value),
+                        )));
+                    }
+                }
                 Task::done(Action::None)
             }
-            // PageMessage::SuspendTextChanged(time) => {
-            //     self.suspend_time = time.clone();
-            //     Task::none()
-            // }
-            // PageMessage::LogoutTextChanged(time) => {
-            //     self.logout_time = time.clone();
-            //     Task::none()
-            // }
-            // PageMessage::ShutdownTextChanged(time) => {
-            //     self.shutdown_time = time.clone();
-            //     Task::none()
-            // }
             PageMessage::ComponentMessage(msg) => {
                 return self.suspend_form.update(msg).map(|action| {
                     match action {
@@ -94,7 +102,6 @@ impl Page for PowerControls {
                     }
                 });
             }
-            _ => Task::done(Action::None),
         }
     }
 }
