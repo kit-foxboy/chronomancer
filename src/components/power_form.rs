@@ -1,35 +1,38 @@
+use crate::{
+    components::Component,
+    utils::{
+        TimeUnit,
+        messages::{ComponentMessage, PageMessage},
+        ui::{ComponentSize, Gaps, fixed},
+    },
+};
 use cosmic::{
     Action, Element, Task,
-    cosmic_theme::Spacing,
-    theme,
-    iced::{Alignment, widget::{column, row}},
-    widget::{ComboBox, Id, TextInput, combo_box}
-};
-use crate::{
-    components::{Component, icon_button},
-    utils::{messages::{PageMessage, ComponentMessage}, TimeUnit},
+    iced::{
+        Alignment,
+        widget::{column, row},
+    },
+    theme::Button,
+    widget::{ComboBox, TextInput, button, combo_box},
 };
 
+/// Struct representing a power form component
 #[derive(Debug, Clone)]
-pub struct IconButtonForm {
-    pub id: Id,
+pub struct PowerForm {
     pub input_value: String,
     pub time_unit: TimeUnit,
     pub time_unit_options: combo_box::State<TimeUnit>,
-    icon_name: String,
     placeholder_text: String,
 }
 
-impl Component for IconButtonForm {
+impl Component for PowerForm {
     fn view(&self) -> Element<'_, ComponentMessage> {
-        let Spacing { space_xxs, .. } = theme::active().cosmic().spacing;
-        // show a text widget with an icon button that submits the form
         column![
-            icon_button(&self.icon_name, ComponentMessage::SubmitPressed()),
             row![
                 TextInput::new(&self.placeholder_text, &self.input_value)
                     .on_input(|text| ComponentMessage::TextChanged(text))
-                    .on_submit(|_| ComponentMessage::SubmitPressed()),
+                    .on_submit(|_| { ComponentMessage::SubmitPressed })
+                    .width(fixed(ComponentSize::INPUT_MIN_WIDTH)),
                 ComboBox::new(
                     &self.time_unit_options,
                     "",
@@ -37,13 +40,16 @@ impl Component for IconButtonForm {
                     ComponentMessage::TimeUnitChanged,
                 )
             ]
-            .spacing(space_xxs)
+            .spacing(Gaps::xs())
             .align_y(Alignment::Center),
+            button::text("Set {} Time")
+                .on_press(ComponentMessage::SubmitPressed)
+                .class(Button::Suggested)
         ]
-        .spacing(space_xxs)
         .into()
     }
 
+    /// Update the power form state based on messages
     fn update(&mut self, message: ComponentMessage) -> Task<Action<PageMessage>> {
         match message {
             ComponentMessage::TextChanged(new_text) => {
@@ -51,22 +57,28 @@ impl Component for IconButtonForm {
                     self.input_value = value.to_string();
                 }
                 Task::none()
-            },
+            }
             ComponentMessage::TimeUnitChanged(unit) => {
                 self.time_unit = unit;
                 Task::none()
-            },
-            ComponentMessage::SubmitPressed() => {
-                Task::done(Action::App(PageMessage::FormSubmitted(self.id.clone())))
             }
+            ComponentMessage::SubmitPressed => {
+                if self.validate_input() {
+                    let value = self.input_value.parse::<i32>().unwrap()
+                        * self.time_unit.to_seconds_multiplier();
+                    Task::done(Action::App(PageMessage::PowerFormSubmitted(value)))
+                } else {
+                    Task::none()
+                }
+            }
+            _ => Task::none(),
         }
     }
 }
 
-impl IconButtonForm {
-    pub fn new(icon_name: impl Into<String>, placeholder_text: impl Into<String>) -> Self {
+impl PowerForm {
+    pub fn new(placeholder_text: impl Into<String>) -> Self {
         Self {
-            id: Id::unique(),
             input_value: String::new(),
             time_unit: TimeUnit::Seconds, // Default to seconds
             time_unit_options: combo_box::State::new(vec![
@@ -75,8 +87,17 @@ impl IconButtonForm {
                 TimeUnit::Hours,
                 TimeUnit::Days,
             ]),
-            icon_name: icon_name.into(),
             placeholder_text: placeholder_text.into(),
         }
+    }
+
+    fn validate_input(&self) -> bool {
+        let value = self.input_value.parse::<i32>();
+        value.is_ok() && value.unwrap_or_default() > 0
+    }
+
+    fn clear(&mut self) {
+        self.input_value.clear();
+        self.time_unit = TimeUnit::Seconds;
     }
 }

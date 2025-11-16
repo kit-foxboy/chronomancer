@@ -1,19 +1,24 @@
-use std::{fs::File, sync::Arc};
 use cosmic::widget::Id;
+use std::{fs::File, sync::Arc};
 
-use crate::{config::Config, models::Timer, utils::{database::SQLiteDatabase, TimeUnit}};
+use crate::{
+    config::Config,
+    models::Timer,
+    utils::{TimeUnit, database::SQLiteDatabase},
+};
 
 #[derive(Debug, Clone)]
 pub enum ComponentMessage {
     TextChanged(String),
     TimeUnitChanged(TimeUnit),
-    SubmitPressed(),
+    SubmitPressed,
+    RadioOptionSelected(usize),
 }
 
 #[derive(Debug, Clone)]
 pub enum PageMessage {
     StayAwakeButtonPressed,
-    FormSubmitted(Id),
+    PowerFormSubmitted(i32),
     ComponentMessage(ComponentMessage),
 }
 

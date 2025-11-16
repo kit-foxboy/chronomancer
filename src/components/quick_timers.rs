@@ -1,18 +1,32 @@
-use crate::components::button_row;
+use crate::utils::ui::{ComponentSize, Gaps, fixed};
 use cosmic::{Element, theme};
-use cosmic::{cosmic_theme::Spacing, iced::Alignment, iced_widget::column, widget::text};
+use cosmic::{
+    iced::Alignment,
+    iced_widget::{column, row},
+    widget::text,
+};
 
 pub fn quick_timers<Message: Clone + std::fmt::Debug + 'static>(
     timers: Vec<(String, Message)>,
 ) -> Element<'static, Message> {
-    let Spacing {
-        space_xxs, space_xs, ..
-    } = theme::active().cosmic().spacing;
+    let mut buttons = row![];
+    for (label, msg) in timers {
+        buttons = buttons.push(
+            cosmic::widget::button::text(label)
+                .height(fixed(ComponentSize::QUICK_TIMER_BUTTON_HEIGHT))
+                .class(theme::Button::Standard)
+                .on_press(msg),
+        );
+    }
+    let buttons = buttons.spacing(Gaps::xs());
 
-    let content = column![text("Quick Timers:").size(24), button_row(timers, space_xs)]
-        .align_x(Alignment::Center)
-        .padding(space_xxs)
-        .spacing(space_xs);
+    let content = column![
+        text("Quick Timers:").size(ComponentSize::HEADER_TEXT_SIZE),
+        buttons
+    ]
+    .align_x(Alignment::Center)
+    .padding(Gaps::xs())
+    .spacing(Gaps::s());
 
     content.into()
 }

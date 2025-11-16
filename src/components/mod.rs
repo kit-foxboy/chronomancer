@@ -1,17 +1,15 @@
-use cosmic::{Element, Task, Action};
+use cosmic::{Action, Element, Task};
 
-use crate::utils::messages::{PageMessage, ComponentMessage};
+use crate::utils::messages::{ComponentMessage, PageMessage};
 
-pub mod button_row;
-pub mod quick_timers;
 pub mod icon_button;
-pub mod icon_button_form;
+pub mod power_form;
+pub mod quick_timers;
+pub mod radio_components;
 
-pub use button_row::button_row;
+pub use icon_button::ToggleIconRadio;
+pub use power_form::PowerForm;
 pub use quick_timers::quick_timers;
-pub use icon_button_form::IconButtonForm;
-pub use icon_button::icon_button;
-
 
 /// Trait for UI components
 pub trait Component {
