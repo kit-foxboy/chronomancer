@@ -17,7 +17,6 @@ pub enum ComponentMessage {
 
 #[derive(Debug, Clone)]
 pub enum PageMessage {
-    StayAwakeButtonPressed,
     PowerFormSubmitted(i32),
     ComponentMessage(ComponentMessage),
 }

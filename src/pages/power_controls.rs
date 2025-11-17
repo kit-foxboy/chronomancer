@@ -59,18 +59,10 @@ impl Page for PowerControls {
     /// Update the power controls page state based on messages
     fn update(&mut self, message: PageMessage) -> Task<Action<AppMessage>> {
         match message {
-            PageMessage::StayAwakeButtonPressed => Task::done(Action::App(
-                AppMessage::PowerMessage(PowerMessage::ToggleStayAwake),
-            )),
             PageMessage::ComponentMessage(msg) => {
-                // Update selection state and trigger actions for certain indices
-                if let ComponentMessage::RadioOptionSelected(0) = msg.clone() {
-                    self.power_buttons.update(msg);
-                    Task::done(Action::App(AppMessage::PowerMessage(
-                        PowerMessage::ToggleStayAwake,
-                    )))
+                if let ComponentMessage::RadioOptionSelected(new_index) = msg.clone() {
+                    self.handle_radio_selection(new_index, msg)
                 } else {
-                    self.power_buttons.update(msg);
                     Task::done(Action::None)
                 }
             }
@@ -92,7 +84,25 @@ impl Page for PowerControls {
                     Task::done(Action::None)
                 }
             }
-            _ => Task::done(Action::None),
+        }
+    }
+}
+
+impl PowerControls {
+    /// handle radio button selection
+    fn handle_radio_selection(
+        &mut self,
+        new_index: usize,
+        msg: ComponentMessage,
+    ) -> Task<Action<AppMessage>> {
+        let previous = self.power_buttons.selected;
+        self.power_buttons.update(msg);
+        if new_index == 0 && previous != Some(0) || new_index > 0 && previous == Some(0) {
+            Task::done(Action::App(AppMessage::PowerMessage(
+                PowerMessage::ToggleStayAwake,
+            )))
+        } else {
+            Task::done(Action::None)
         }
     }
 }

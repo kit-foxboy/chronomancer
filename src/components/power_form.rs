@@ -68,6 +68,7 @@ impl Component for PowerForm {
                         * self.time_unit.to_seconds_multiplier();
                     Task::done(Action::App(PageMessage::PowerFormSubmitted(value)))
                 } else {
+                    self.clear();
                     Task::none()
                 }
             }
