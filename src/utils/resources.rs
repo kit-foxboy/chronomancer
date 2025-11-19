@@ -1,13 +1,10 @@
 use anyhow::{Context, Result};
-use cosmic::{widget, Element};
-use std::{
-    fs::File,
-    os::fd::OwnedFd as StdOwnedFd,
-    process::Command,
-};
+use cosmic::{Element, widget};
+use std::{fs::File, os::fd::OwnedFd as StdOwnedFd, process::Command};
+
 use zbus::{Connection, Proxy, zvariant::OwnedFd};
 
-/// Load a system icon using icon::from_name
+/// Load a system icon using `icon::from_name`
 pub fn system_icon<Message: 'static>(name: &str, size: u16) -> Element<'static, Message> {
     widget::icon::from_name(name)
         .size(size)
@@ -17,15 +14,15 @@ pub fn system_icon<Message: 'static>(name: &str, size: u16) -> Element<'static, 
 }
 
 /// Acquire a systemd-logind suspend inhibitor lock.
-/// 
+///
 /// Returns a File handle that represents the inhibitor lock. Keep this alive
 /// to prevent the system from suspending. Drop it to release the lock.
-/// 
+///
 /// # Arguments
 /// * `who` - Application name (e.g., "Chronomancer")
-/// * `why` - Reason for inhibiting (e.g., "User requested stay-awake mode")
+/// * `reason` - Reason for inhibiting (e.g., "User requested stay-awake mode")
 /// * `mode` - "block" to block suspend, "delay" to delay it
-pub async fn acquire_suspend_inhibit(who: &str, why: &str, mode: &str) -> Result<File> {
+pub async fn acquire_suspend_inhibit(who: &str, reason: &str, mode: &str) -> Result<File> {
     let connection = Connection::system()
         .await
         .context("Failed to connect to system bus")?;
@@ -39,7 +36,7 @@ pub async fn acquire_suspend_inhibit(who: &str, why: &str, mode: &str) -> Result
     .await?;
 
     let (owned_fd,): (OwnedFd,) = proxy
-        .call("Inhibit", &("sleep", who, why, mode))
+        .call("Inhibit", &("sleep", who, reason, mode))
         .await
         .context("D-Bus call to Inhibit failed")?;
 
@@ -48,11 +45,12 @@ pub async fn acquire_suspend_inhibit(who: &str, why: &str, mode: &str) -> Result
 }
 
 /// Release a suspend inhibitor lock by dropping the file handle.
-/// This is just an explicit wrapper around drop() for clarity.
+/// This is just an explicit wrapper around `drop()` for clarity.
 pub fn release_suspend_inhibit(file: File) {
     drop(file);
 }
 
+/// Execute system suspend by calling `systemctl suspend`.
 pub fn execute_system_suspend() -> Result<()> {
     let status = Command::new("systemctl")
         .arg("suspend")
@@ -63,12 +61,12 @@ pub fn execute_system_suspend() -> Result<()> {
         Ok(())
     } else {
         Err(anyhow::anyhow!(
-            "systemctl suspend failed with status: {}",
-            status
+            "systemctl suspend failed with status: {status}"
         ))
     }
 }
 
+/// Execute system shutdown by calling `systemctl poweroff`.
 pub fn execute_system_shutdown() -> Result<()> {
     let status = Command::new("systemctl")
         .arg("poweroff")
@@ -79,8 +77,27 @@ pub fn execute_system_shutdown() -> Result<()> {
         Ok(())
     } else {
         Err(anyhow::anyhow!(
-            "systemctl poweroff failed with status: {}",
-            status
+            "systemctl poweroff failed with status: {status}"
+        ))
+    }
+}
+
+/// Execute a system logout by calling `loginctl kill-session $XDG_SESSION_ID`
+pub fn execute_system_logout() -> Result<()> {
+    let xdg_session_id =
+        std::env::var("XDG_SESSION_ID").context("XDG_SESSION_ID environment variable not set")?;
+
+    let status = Command::new("loginctl")
+        .arg("kill-session")
+        .arg(xdg_session_id)
+        .status()
+        .context("Failed to execute loginctl kill-session")?;
+
+    if status.success() {
+        Ok(())
+    } else {
+        Err(anyhow::anyhow!(
+            "loginctl kill-session failed with status: {status}"
         ))
     }
 }

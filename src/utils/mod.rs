@@ -6,4 +6,4 @@ pub mod ui;
 
 pub use time::TimeUnit;
 #[allow(dead_code)]
-pub use ui::{ComponentSize, Gaps, Padding, ResponsiveSize};
+pub use ui::Padding;

@@ -1,4 +1,3 @@
-use cosmic::widget::Id;
 use std::{fs::File, sync::Arc};
 
 use crate::{
@@ -41,7 +40,6 @@ pub enum PowerMessage {
 
 #[derive(Debug, Clone)]
 pub enum TimerMessage {
-    New(i32, bool),
     Created(Result<Timer, String>),
     ActiveFetched(Result<Vec<Timer>, String>),
 }

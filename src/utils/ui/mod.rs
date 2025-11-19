@@ -2,5 +2,4 @@
 
 pub mod spacing;
 
-#[allow(dead_code)]
-pub use spacing::{ComponentSize, Gaps, Padding, ResponsiveSize};
+pub use spacing::{ComponentSize, Gaps, Padding};

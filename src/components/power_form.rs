@@ -1,5 +1,5 @@
 use cosmic::{
-    Action, Element, Task,
+    Element,
     iced::{Alignment, Length::Fill, widget::column},
     theme::Button,
     widget::{ComboBox, TextInput, button, combo_box},
@@ -28,12 +28,12 @@ impl Component for PowerForm {
     fn view(&self) -> Element<'_, ComponentMessage> {
         column![
             TextInput::new(&self.placeholder_text, &self.input_value)
-                .on_input(|text| ComponentMessage::TextChanged(text))
+                .on_input(ComponentMessage::TextChanged)
                 .on_submit(|_| { ComponentMessage::SubmitPressed })
                 .width(Fill),
             ComboBox::new(
                 &self.time_unit_options,
-                &*fl!("unit-label"),
+                &fl!("unit-label"),
                 Some(&self.time_unit),
                 ComponentMessage::TimeUnitChanged,
             )
@@ -72,7 +72,7 @@ impl Component for PowerForm {
                     None
                 }
             }
-            _ => None,
+            ComponentMessage::RadioOptionSelected(_) => None,
         }
     }
 }

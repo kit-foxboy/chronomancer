@@ -17,7 +17,7 @@ pub struct PowerControls {
 }
 
 impl Default for PowerControls {
-    /// Create a default instance of PowerControls
+    /// Create a default instance of `PowerControls`
     fn default() -> Self {
         Self {
             power_buttons: RadioComponents::new(vec![
@@ -60,7 +60,7 @@ impl Page for PowerControls {
         match message {
             PageMessage::ComponentMessage(msg) => {
                 if let ComponentMessage::RadioOptionSelected(new_index) = msg.clone() {
-                    self.handle_radio_selection(new_index, msg)
+                    self.handle_radio_selection(new_index, &msg)
                 } else {
                     let page_message = self.power_form.update(msg);
                     if let Some(page_msg) = page_message {
@@ -97,12 +97,11 @@ impl PowerControls {
     fn handle_radio_selection(
         &mut self,
         new_index: usize,
-        msg: ComponentMessage,
+        msg: &ComponentMessage,
     ) -> Task<Action<AppMessage>> {
         let previous = self.power_buttons.selected;
         self.power_buttons.update(msg);
         self.power_form.placeholder_text = match new_index {
-            1 => fl!("set-time-label", operation = fl!("operation-suspend")),
             2 => fl!("set-time-label", operation = fl!("operation-shutdown")),
             3 => fl!("set-time-label", operation = fl!("operation-logout")),
             _ => fl!("set-time-label", operation = fl!("operation-suspend")),

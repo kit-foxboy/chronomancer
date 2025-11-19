@@ -58,6 +58,15 @@ check *args:
 # Runs a clippy check with JSON message format
 check-json: (check '--message-format=json')
 
+# Apply clippy pedantic auto-fixes (modifies code)
+fix-clippy:
+    cargo clippy --all-features --fix --allow-dirty --allow-staged -- -W clippy::pedantic
+
+# Format Rust code
+fmt:
+    cargo fmt --all
+
+
 # Run the application for testing purposes
 run *args:
     env RUST_BACKTRACE=full cargo run --release {{args}}
@@ -105,4 +114,3 @@ vendor:
 vendor-extract:
     rm -rf vendor
     tar pxf vendor.tar
-

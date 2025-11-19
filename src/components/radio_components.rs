@@ -1,7 +1,4 @@
-use cosmic::{
-    Element,
-    iced_widget::{column, row},
-};
+use cosmic::{Element, iced_widget::row};
 
 use crate::utils::messages::ComponentMessage;
 
@@ -43,27 +40,12 @@ impl<T: RadioComponent> RadioComponents<T> {
         self.selected = None;
     }
 
-    /// create a new RadioComponents instance
+    /// create a new `RadioComponents` instance
     pub fn new(options: Vec<T>) -> Self {
         Self {
             options,
             selected: None,
         }
-    }
-
-    /// display options in a column layout
-    pub fn column(&self, spacing: u16) -> Element<'_, ComponentMessage> {
-        let mut column_elements = vec![];
-
-        for (index, option) in self.options.iter().enumerate() {
-            let is_active = match self.selected {
-                Some(selected_index) => selected_index == index,
-                None => false,
-            };
-            column_elements.push(option.view(is_active));
-        }
-
-        column(column_elements).spacing(spacing).into()
     }
 
     /// display options in a row layout
@@ -82,10 +64,9 @@ impl<T: RadioComponent> RadioComponents<T> {
     }
 
     /// TODO: add a more flexible view method that embeds the options in a custom layout/element or something if needed
-
     /// handle messages to update selected option
-    pub fn update(&mut self, message: ComponentMessage) {
-        if let ComponentMessage::RadioOptionSelected(index) = message {
+    pub fn update(&mut self, message: &ComponentMessage) {
+        if let ComponentMessage::RadioOptionSelected(index) = *message {
             if self.selected == Some(index) {
                 self.deactivate();
             } else {

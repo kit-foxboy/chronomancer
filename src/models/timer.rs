@@ -40,20 +40,20 @@ impl TimerType {
 }
 
 impl Timer {
-    pub fn new(duration_seconds: i32, is_recurring: bool, timer_type: TimerType) -> Self {
+    pub fn new(duration_seconds: i32, is_recurring: bool, timer_type: &TimerType) -> Self {
         Self {
             id: 0,
             description: timer_type.as_str().into(),
             is_recurring,
             paused_at: 0,
-            ends_at: chrono::Utc::now().timestamp() + duration_seconds as i64,
+            ends_at: chrono::Utc::now().timestamp() + i64::from(duration_seconds),
             created_at: chrono::Utc::now().timestamp(),
         }
     }
 
     pub fn is_active(&self) -> bool {
         let now = chrono::Utc::now().timestamp();
-        now < self.ends_at as i64
+        now < self.ends_at
     }
 }
 

@@ -1,0 +1,48 @@
+name: Chronomancer CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Format & Clippy (pedantic)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+            path: |
+              ~/.cargo/bin
+              ~/.cargo/registry
+              ~/.cargo/git
+              target
+            key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+            restore-keys: ${{ runner.os }}-cargo-
+
+      - name: Verify formatting
+        run: cargo fmt --all -- --check
+
+      - name: Clippy (pedantic, deny warnings)
+        run: cargo clippy --all-targets --all-features -- -W clippy::pedantic -D warnings
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "Formatter and Clippy pedantic run complete."
+          echo "Status: ${{ job.status }}"

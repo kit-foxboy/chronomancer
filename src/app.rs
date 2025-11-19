@@ -16,7 +16,6 @@ use notify_rust::{Hint, Notification};
 use std::{fs::File, sync::Arc};
 
 use crate::{
-    components::quick_timers,
     config::Config,
     models::{Timer, timer::TimerType},
     pages::{Page, PowerControls},
@@ -122,30 +121,8 @@ impl Application for AppModel {
         if matches!(self.popup, Some(p) if p == id) {
             let Spacing { space_m, .. } = theme::active().cosmic().spacing;
 
-            let quick_timers = quick_timers::quick_timers(vec![
-                (
-                    "5 Min".to_string(),
-                    Message::TimerMessage(TimerMessage::New(300, false)),
-                ),
-                (
-                    "10 Min".to_string(),
-                    Message::TimerMessage(TimerMessage::New(600, false)),
-                ),
-                (
-                    "15 Min".to_string(),
-                    Message::TimerMessage(TimerMessage::New(900, false)),
-                ),
-                (
-                    "30 Min".to_string(),
-                    Message::TimerMessage(TimerMessage::New(1800, false)),
-                ),
-            ]);
-
-            let power = self
-                .power_controls
-                .view()
-                .map(|msg| Message::PageMessage(msg));
-            let content = column![quick_timers, power].spacing(space_m);
+            let power = self.power_controls.view().map(Message::PageMessage);
+            let content = column![power].spacing(space_m);
 
             self.core
                 .applet
@@ -279,6 +256,9 @@ impl AppModel {
                     }
                     TimerType::Logout => {
                         // Execute system logout
+                        tasks.push(Task::done(Action::App(Message::PowerMessage(
+                            PowerMessage::ExecuteLogout,
+                        ))));
                     }
                     TimerType::Shutdown => {
                         tasks.push(Task::done(Action::App(Message::PowerMessage(
@@ -295,7 +275,7 @@ impl AppModel {
                             .timeout(0)
                             .show()
                         {
-                            eprintln!("Failed to send notification: {}", e);
+                            eprintln!("Failed to send notification: {e}");
                         }
                     }
                 }
@@ -332,14 +312,14 @@ impl AppModel {
     // applets work a little differently than full apps with multiple pages so unsure if this is problem
     // attempting to define opinionated architecture around pages/components even in applets though
     fn handle_page_message(&mut self, msg: PageMessage) -> Task<Action<Message>> {
-        return self.power_controls.update(msg);
+        self.power_controls.update(msg)
     }
 
     fn handle_database_message(&mut self, msg: DatabaseMessage) -> Task<Action<Message>> {
         match msg {
             DatabaseMessage::Initialized(result) => {
                 if let Ok(db) = result {
-                    println!("Database initialized successfully: {:?}", db);
+                    println!("Database initialized successfully: {db:?}");
                     self.database = Some(db);
 
                     // Fetch active timers from the database
@@ -360,7 +340,7 @@ impl AppModel {
                 }
             }
             DatabaseMessage::FailedToInitialize(err) => {
-                eprintln!("Failed to initialize database: {}", err);
+                eprintln!("Failed to initialize database: {err}");
                 // todo: figure out how tf to notify user appropriately in applets
             }
         }
@@ -369,32 +349,13 @@ impl AppModel {
 
     fn handle_timer_message(&mut self, msg: TimerMessage) -> Task<Action<Message>> {
         match msg {
-            TimerMessage::New(duration, is_recurring) => {
-                let timer = Timer::new(
-                    duration,
-                    is_recurring,
-                    TimerType::UserDefined("Quick Timer".to_string()),
-                );
-                if let Some(database) = self.database.clone() {
-                    return Task::perform(
-                        async move {
-                            Timer::insert(database.pool(), &timer)
-                                .await
-                                .map_err(|e| e.to_string())
-                        },
-                        |result| Action::App(Message::TimerMessage(TimerMessage::Created(result))),
-                    );
-                } else {
-                    eprintln!("Database not yet available");
-                }
-            }
             TimerMessage::Created(result) => match result {
                 Ok(timer) => {
                     self.active_timers.push(timer);
                     println!("Created timer: {:#?}", &self.active_timers.last());
                 }
                 Err(err) => {
-                    eprintln!("Failed to create timer: {}", err);
+                    eprintln!("Failed to create timer: {err}");
                 }
             },
             TimerMessage::ActiveFetched(result) => match result {
@@ -402,7 +363,7 @@ impl AppModel {
                     self.active_timers = timers;
                 }
                 Err(err) => {
-                    eprintln!("Failed to fetch active timers: {}", err);
+                    eprintln!("Failed to fetch active timers: {err}");
                 }
             },
         }
@@ -414,42 +375,27 @@ impl AppModel {
         match msg {
             PowerMessage::ToggleStayAwake => {
                 if let Some(inhibitor) = self.suspend_inhibitor.take() {
-                    // Release the inhibitor by dropping it
                     resources::release_suspend_inhibit(inhibitor);
                     println!("Released suspend inhibitor");
                 } else {
-                    // Acquire new inhibitor
-                    return Task::perform(
-                        async move {
-                            resources::acquire_suspend_inhibit(
-                                "Chronomancer",
-                                "User requested stay-awake mode",
-                                "block",
-                            )
-                            .await
-                            .map_err(|e| e.to_string())
-                        },
-                        |result| {
-                            Action::<Message>::App(Message::PowerMessage(
-                                PowerMessage::InhibitAcquired(Arc::new(result)),
-                            ))
-                        },
-                    );
+                    return AppModel::get_suspend_inhibitor();
                 }
             }
             PowerMessage::InhibitAcquired(result) => {
                 match Arc::try_unwrap(result) {
                     Ok(Ok(file)) => {
                         // Successfully unwrapped the Arc and got the File
+                        // Double okay is a bit silly but matches the async task return type
+                        // Also makes the arc unwrap safe
                         self.suspend_inhibitor = Some(file);
                         println!("Successfully acquired suspend inhibitor");
                     }
                     Ok(Err(err)) => {
-                        eprintln!("Failed to acquire inhibit: {}", err);
+                        eprintln!("Failed to acquire inhibit: {err}");
                     }
                     Err(arc) => {
                         // Multiple Arc references exist - this shouldn't happen in normal flow
-                        // but handle it gracefully
+                        // but handle it gracefully anyway as things that shouldn't happen have a habit of happening
                         eprintln!(
                             "Cannot take ownership: Arc has multiple references (count: {})",
                             Arc::strong_count(&arc)
@@ -458,8 +404,10 @@ impl AppModel {
                 }
             }
             PowerMessage::SetSuspendTime(time) => {
-                let suspend_timer = Timer::new(time, false, TimerType::Suspend);
+                // We create a suspend inhibitor when setting a suspend timer so the timer overrides system settings
+                let _inhibitor_task = AppModel::get_suspend_inhibitor();
 
+                let suspend_timer = Timer::new(time, false, &TimerType::Suspend);
                 if let Some(database) = self.database.clone() {
                     return Task::perform(
                         async move {
@@ -469,13 +417,15 @@ impl AppModel {
                         },
                         |result| Action::App(Message::TimerMessage(TimerMessage::Created(result))),
                     );
-                } else {
-                    eprintln!("Database not yet available");
                 }
+                eprintln!("Database not yet available");
             }
             PowerMessage::SetShutdownTime(time) => {
-                let shutdown_timer = Timer::new(time, false, TimerType::Shutdown);
+                // We create a suspend inhibitor when setting a shutdown timer so the timer overrides system settings
+                // Otherwise the system might suspend before shutting down and never complete until it wakes up and immedately shuts down
+                let _inhibitor_task = AppModel::get_suspend_inhibitor();
 
+                let shutdown_timer = Timer::new(time, false, &TimerType::Shutdown);
                 if let Some(database) = self.database.clone() {
                     return Task::perform(
                         async move {
@@ -485,25 +435,64 @@ impl AppModel {
                         },
                         |result| Action::App(Message::TimerMessage(TimerMessage::Created(result))),
                     );
-                } else {
-                    eprintln!("Database not yet available");
                 }
+                eprintln!("Database not yet available");
+            }
+            PowerMessage::SetLogoutTime(time) => {
+                // We create a suspend inhibitor when setting a logout timer so the timer overrides system settings
+                // Otherwise the system might suspend before logging out and never complete until it wakes up and immedately logs out
+                let _inhibitor_task = AppModel::get_suspend_inhibitor();
+
+                let logout_timer = Timer::new(time, false, &TimerType::Logout);
+                if let Some(database) = self.database.clone() {
+                    return Task::perform(
+                        async move {
+                            Timer::insert(database.pool(), &logout_timer)
+                                .await
+                                .map_err(|e| e.to_string())
+                        },
+                        |result| Action::App(Message::TimerMessage(TimerMessage::Created(result))),
+                    );
+                }
+                eprintln!("Database not yet available");
             }
             PowerMessage::ExecuteSuspend => {
                 if let Err(e) = resources::execute_system_suspend() {
-                    eprintln!("Failed to suspend system: {}", e);
+                    eprintln!("Failed to suspend system: {e}");
                 }
             }
             PowerMessage::ExecuteShutdown => {
                 if let Err(e) = resources::execute_system_shutdown() {
-                    eprintln!("Failed to shutdown system: {}", e);
+                    eprintln!("Failed to shutdown system: {e}");
                 }
             }
-            _ => {
-                // Other power messages are handled in the component update
+            PowerMessage::ExecuteLogout => {
+                println!("Executing system logout");
+                if let Err(e) = resources::execute_system_logout() {
+                    eprintln!("Failed to logout system: {e}");
+                }
             }
         }
         Task::none()
+    }
+
+    fn get_suspend_inhibitor() -> Task<Action<Message>> {
+        Task::perform(
+            async move {
+                resources::acquire_suspend_inhibit(
+                    "Chronomancer",
+                    "User requested stay-awake mode",
+                    "block",
+                )
+                .await
+                .map_err(|e| e.to_string())
+            },
+            |result| {
+                Action::<Message>::App(Message::PowerMessage(PowerMessage::InhibitAcquired(
+                    Arc::new(result),
+                )))
+            },
+        )
     }
 }
 
