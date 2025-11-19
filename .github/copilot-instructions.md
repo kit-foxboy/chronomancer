@@ -260,45 +260,61 @@ fn build_timer_card(timer: &Timer) -> Element<Message> {
 ```
 
 ### Message Passing Strategy
+
+**See `.github/architectural-idioms.md` for the full component-to-page message flow pattern.**
+
+Components return `Option<PageMessage>` to signal page-level events. Pages handle these by recursively calling their own `update` method:
+
 ```rust
-// App -> Page -> Component
-fn view(&self) -> Element<Message> {
-    components::popup()
-        .section(components::active_timers(&self.timers))
-        .section(components::quick_actions())
-        .footer(components::settings_button())
+// Component trait - returns optional page message
+pub trait Component {
+    fn view(&self) -> Element<'_, ComponentMessage>;
+    fn update(&mut self, message: ComponentMessage) -> Option<PageMessage>;
 }
 
-// Each page will forward messages so components can use generic Message type
-fn update(&mut self, message: PageMessage) {
-    match message {
-        PageMessage::TimerStarted(name, duration) => {
-            self.start_timer(name, duration);
-        }
-        PageMessage::QuickAction(action) => {
-            self.handle_quick_action(action);
+// Component implementation
+impl Component for PowerForm {
+    fn update(&mut self, message: ComponentMessage) -> Option<PageMessage> {
+        match message {
+            ComponentMessage::SubmitPressed => {
+                if self.validate() {
+                    Some(PageMessage::PowerFormSubmitted(self.value()))
+                } else {
+                    None
+                }
+            }
+            _ => None,
         }
     }
 }
 
-// Components emit Messages but don't handle them directly
-pub trait Component {
-    fn view(&self) -> Element<Message>;
+// Page handles component messages with recursive update
+impl Page for PowerControls {
+    fn update(&mut self, message: PageMessage) -> Task<Action<AppMessage>> {
+        match message {
+            PageMessage::ComponentMessage(msg) => {
+                let page_message = self.component.update(msg);
+                if let Some(page_msg) = page_message {
+                    self.update(page_msg)  // Recursive call
+                } else {
+                    Task::done(Action::None)
+                }
+            }
+            PageMessage::PowerFormSubmitted(value) => {
+                Task::done(Action::App(AppMessage::PowerMessage(
+                    PowerMessage::SetValue(value)
+                )))
+            }
+        }
+    }
 }
+```
 
-pub trait Page {
-    fn view(&self) -> Element<Message>;
-    fn update(&mut self, message: PageMessage);
-}
-
-fn quick_actions() -> Element<Message> {
-    widget::row()
-        .push(
-            widget::button("5 min")
-                .on_press(Message::StartTimer("Quick 5 min".into(), Duration::from_secs(300)))
-        )
-        .into()
-}
+**Key Benefits:**
+- No type conversion helpers needed
+- Components don't need `Task` or `Action` types
+- Clear, traceable message flow
+- Self-documenting with `Option<PageMessage>`
 ```
 ## Learning & Development Approach
 
@@ -332,6 +348,14 @@ This project is a **learning exercise**. When assisting:
 
 ## Resources
 
+### Project Documentation
+- **Architectural Idioms:** `.github/architectural-idioms.md` - Component-to-page message flow and other patterns
+- **UI Spacing Guide:** `.github/UI_SPACING_GUIDE.md`
+- **Iterator Patterns:** `.github/iterator-patterns.md`
+- **Icon Theming Notes:** `.github/icon-theming-notes.md`
+- **Macro Explanations:** `.github/macro-explanations.md`
+
+### External Documentation
 - **libcosmic Applets:** https://pop-os.github.io/libcosmic-book/panel-applets.html
 - **libcosmic API:** https://pop-os.github.io/libcosmic/cosmic/
 - **systemd D-Bus API:** https://www.freedesktop.org/wiki/Software/systemd/dbus/

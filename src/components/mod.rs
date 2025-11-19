@@ -14,5 +14,5 @@ pub use quick_timers::quick_timers;
 /// Trait for UI components
 pub trait Component {
     fn view(&self) -> Element<'_, ComponentMessage>;
-    fn update(&mut self, message: ComponentMessage) -> Task<Action<PageMessage>>;
+    fn update(&mut self, message: ComponentMessage) -> Option<PageMessage>;
 }

@@ -1,11 +1,9 @@
 use super::radio_components::RadioComponent;
-use crate::utils::{
-    messages::ComponentMessage,
-    resources,
-    ui::{ComponentSize, fill, fixed},
-};
+use crate::utils::{messages::ComponentMessage, resources, ui::ComponentSize};
 use cosmic::{
-    Element, theme,
+    Element,
+    iced::Length,
+    theme,
     widget::{button, container},
 };
 
@@ -24,12 +22,12 @@ pub fn toggle_icon_button<Message: Clone + std::fmt::Debug + 'static>(
 
     button::custom(
         container(resources::system_icon(name, ComponentSize::ICON_SIZE))
-            .width(fill())
-            .center(fill()),
+            .width(Length::Fill)
+            .center(Length::Fill),
     )
     .on_press(on_press)
-    .width(fill())
-    .height(fixed(ComponentSize::ICON_BUTTON_HEIGHT))
+    .width(Length::Fill)
+    .height(ComponentSize::ICON_BUTTON_HEIGHT)
     .class(button_style)
     .into()
 }
@@ -59,12 +57,12 @@ impl RadioComponent for ToggleIconRadio {
 
         button::custom(
             container(resources::system_icon(self.name, ComponentSize::ICON_SIZE))
-                .width(fill())
-                .center(fill()),
+                .width(Length::Fill)
+                .center(Length::Fill),
         )
         .on_press(ComponentMessage::RadioOptionSelected(self.index))
-        .width(fill())
-        .height(fixed(ComponentSize::ICON_BUTTON_HEIGHT))
+        .width(Length::Fill)
+        .height(ComponentSize::ICON_BUTTON_HEIGHT)
         .class(button_style)
         .into()
     }

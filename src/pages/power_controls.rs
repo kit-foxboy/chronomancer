@@ -40,19 +40,17 @@ impl Page for PowerControls {
             .map(PageMessage::ComponentMessage);
 
         // Show power form only if one of the radio buttons is active (not stay-awake)
-        let form = if let Some(index) = self.power_buttons.selected {
-            if index > 0 {
-                self.power_form.view().map(PageMessage::ComponentMessage)
-            } else {
-                Space::new(0, 0).into()
-            }
+        let form = if let Some(index) = self.power_buttons.selected
+            && index > 0
+        {
+            self.power_form.view().map(PageMessage::ComponentMessage)
         } else {
             Space::new(0, 0).into()
         };
 
         column![power_buttons, form]
             .align_x(Alignment::Start)
-            .padding(Padding::vertical(Gaps::xs()))
+            .padding(Padding::standard())
             .spacing(Gaps::s())
             .into()
     }
@@ -64,7 +62,12 @@ impl Page for PowerControls {
                 if let ComponentMessage::RadioOptionSelected(new_index) = msg.clone() {
                     self.handle_radio_selection(new_index, msg)
                 } else {
-                    Task::done(Action::None)
+                    let page_message = self.power_form.update(msg);
+                    if let Some(page_msg) = page_message {
+                        self.update(page_msg)
+                    } else {
+                        Task::done(Action::None)
+                    }
                 }
             }
             PageMessage::PowerFormSubmitted(time) => {

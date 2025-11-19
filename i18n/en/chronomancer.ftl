@@ -14,3 +14,5 @@ operation-shutdown = Shutdown
 operation-restart = Restart
 operation-logout = Logout
 set-time-label = Set { $operation } Time
+unit-label = Unit
+set-button-label = Set

@@ -1,19 +1,18 @@
-use crate::{
-    components::Component,
-    utils::{
-        TimeUnit,
-        messages::{ComponentMessage, PageMessage},
-        ui::{ComponentSize, Gaps, fixed},
-    },
-};
 use cosmic::{
     Action, Element, Task,
-    iced::{
-        Alignment,
-        widget::{column, row},
-    },
+    iced::{Alignment, Length::Fill, widget::column},
     theme::Button,
     widget::{ComboBox, TextInput, button, combo_box},
+};
+
+use crate::{
+    components::Component,
+    fl,
+    utils::{
+        Padding, TimeUnit,
+        messages::{ComponentMessage, PageMessage},
+        ui::Gaps,
+    },
 };
 
 /// Struct representing a power form component
@@ -28,51 +27,52 @@ pub struct PowerForm {
 impl Component for PowerForm {
     fn view(&self) -> Element<'_, ComponentMessage> {
         column![
-            row![
-                TextInput::new(&self.placeholder_text, &self.input_value)
-                    .on_input(|text| ComponentMessage::TextChanged(text))
-                    .on_submit(|_| { ComponentMessage::SubmitPressed })
-                    .width(fixed(ComponentSize::INPUT_MIN_WIDTH)),
-                ComboBox::new(
-                    &self.time_unit_options,
-                    "",
-                    Some(&self.time_unit),
-                    ComponentMessage::TimeUnitChanged,
-                )
-            ]
-            .spacing(Gaps::xs())
-            .align_y(Alignment::Center),
-            button::text("Set {} Time")
+            TextInput::new(&self.placeholder_text, &self.input_value)
+                .on_input(|text| ComponentMessage::TextChanged(text))
+                .on_submit(|_| { ComponentMessage::SubmitPressed })
+                .width(Fill),
+            ComboBox::new(
+                &self.time_unit_options,
+                &*fl!("unit-label"),
+                Some(&self.time_unit),
+                ComponentMessage::TimeUnitChanged,
+            )
+            .width(Fill),
+            button::text(fl!("set-button-label"))
                 .on_press(ComponentMessage::SubmitPressed)
                 .class(Button::Suggested)
         ]
+        .align_x(Alignment::Center)
+        .spacing(Gaps::s())
+        .padding(Padding::horizontal(24))
         .into()
     }
 
     /// Update the power form state based on messages
-    fn update(&mut self, message: ComponentMessage) -> Task<Action<PageMessage>> {
+    fn update(&mut self, message: ComponentMessage) -> Option<PageMessage> {
         match message {
             ComponentMessage::TextChanged(new_text) => {
                 if let Ok(value) = new_text.parse::<u32>() {
                     self.input_value = value.to_string();
                 }
-                Task::none()
+                None
             }
             ComponentMessage::TimeUnitChanged(unit) => {
                 self.time_unit = unit;
-                Task::none()
+                None
             }
             ComponentMessage::SubmitPressed => {
                 if self.validate_input() {
+                    println!("valid input");
                     let value = self.input_value.parse::<i32>().unwrap()
                         * self.time_unit.to_seconds_multiplier();
-                    Task::done(Action::App(PageMessage::PowerFormSubmitted(value)))
+                    Some(PageMessage::PowerFormSubmitted(value))
                 } else {
                     self.clear();
-                    Task::none()
+                    None
                 }
             }
-            _ => Task::none(),
+            _ => None,
         }
     }
 }

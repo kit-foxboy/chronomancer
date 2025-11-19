@@ -162,18 +162,3 @@ impl ResponsiveSize {
         }
     }
 }
-
-/// Helper to create Fill length
-pub fn fill() -> Length {
-    Length::Fill
-}
-
-/// Helper to create Fixed length
-pub fn fixed(size: f32) -> Length {
-    Length::Fixed(size)
-}
-
-/// Helper to create Shrink length
-pub fn shrink() -> Length {
-    Length::Shrink
-}

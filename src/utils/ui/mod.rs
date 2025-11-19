@@ -3,6 +3,4 @@
 pub mod spacing;
 
 #[allow(dead_code)]
-pub use spacing::{
-    ComponentSize, Gaps, Padding, ResponsiveSize, cosmic_spacing, fill, fixed, shrink,
-};
+pub use spacing::{ComponentSize, Gaps, Padding, ResponsiveSize};

@@ -1,4 +1,4 @@
-use crate::utils::ui::{ComponentSize, Gaps, fixed};
+use crate::utils::ui::{ComponentSize, Gaps};
 use cosmic::{Element, theme};
 use cosmic::{
     iced::Alignment,
@@ -13,7 +13,7 @@ pub fn quick_timers<Message: Clone + std::fmt::Debug + 'static>(
     for (label, msg) in timers {
         buttons = buttons.push(
             cosmic::widget::button::text(label)
-                .height(fixed(ComponentSize::QUICK_TIMER_BUTTON_HEIGHT))
+                // .height(fixed(ComponentSize::QUICK_TIMER_BUTTON_HEIGHT))
                 .class(theme::Button::Standard)
                 .on_press(msg),
         );
