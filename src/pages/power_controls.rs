@@ -1,5 +1,6 @@
 use crate::{
     components::{Component, PowerForm, ToggleIconRadio, radio_components::RadioComponents},
+    fl,
     pages::Page,
     utils::{
         messages::{AppMessage, ComponentMessage, PageMessage, PowerMessage},
@@ -25,7 +26,7 @@ impl Default for PowerControls {
                 ToggleIconRadio::new(2, "system-shutdown-symbolic"),
                 ToggleIconRadio::new(3, "system-logout-symbolic"),
             ]),
-            power_form: PowerForm::new("{} time"),
+            power_form: PowerForm::new(fl!("set-time-label", operation = fl!("operation-suspend"))),
         }
     }
 }
@@ -97,7 +98,13 @@ impl PowerControls {
     ) -> Task<Action<AppMessage>> {
         let previous = self.power_buttons.selected;
         self.power_buttons.update(msg);
-        if new_index == 0 && previous != Some(0) || new_index > 0 && previous == Some(0) {
+        self.power_form.placeholder_text = match new_index {
+            1 => fl!("set-time-label", operation = fl!("operation-suspend")),
+            2 => fl!("set-time-label", operation = fl!("operation-shutdown")),
+            3 => fl!("set-time-label", operation = fl!("operation-logout")),
+            _ => fl!("set-time-label", operation = fl!("operation-suspend")),
+        };
+        if new_index == 0 || previous == Some(0) {
             Task::done(Action::App(AppMessage::PowerMessage(
                 PowerMessage::ToggleStayAwake,
             )))

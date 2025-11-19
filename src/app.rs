@@ -5,11 +5,7 @@ use cosmic::{
     cosmic_config::{self, CosmicConfigEntry},
     cosmic_theme::Spacing,
     iced::{
-        Limits, 
-        Subscription, 
-        platform_specific::shell::commands::popup, 
-        widget::column, 
-        window,
+        Limits, Subscription, platform_specific::shell::commands::popup, widget::column, window,
     },
     iced_runtime::Appearance,
     theme,
@@ -84,7 +80,7 @@ impl Application for AppModel {
         let app = AppModel {
             core,
             // key_binds: HashMap::new(),
-            icon_name: Self::APP_ID.to_string(),
+            icon_name: "chronomancer-hourglass".to_string(),
             // Optional configuration file for an application.
             config: cosmic_config::Config::new(Self::APP_ID, Config::VERSION)
                 .map(|context| match Config::get_entry(&context) {
@@ -145,7 +141,10 @@ impl Application for AppModel {
                 ),
             ]);
 
-            let power = self.power_controls.view().map(|msg| Message::PageMessage(msg));
+            let power = self
+                .power_controls
+                .view()
+                .map(|msg| Message::PageMessage(msg));
             let content = column![quick_timers, power].spacing(space_m);
 
             self.core
@@ -164,6 +163,11 @@ impl Application for AppModel {
         self.core
             .applet
             .icon_button(&self.icon_name)
+            .class(if self.suspend_inhibitor.is_some() {
+                theme::Button::Suggested
+            } else {
+                theme::Button::AppletIcon
+            })
             .on_press_down(Message::TogglePopup)
             .into()
     }
@@ -366,7 +370,11 @@ impl AppModel {
     fn handle_timer_message(&mut self, msg: TimerMessage) -> Task<Action<Message>> {
         match msg {
             TimerMessage::New(duration, is_recurring) => {
-                let timer = Timer::new(duration, is_recurring, TimerType::UserDefined("Quick Timer".to_string()));
+                let timer = Timer::new(
+                    duration,
+                    is_recurring,
+                    TimerType::UserDefined("Quick Timer".to_string()),
+                );
                 if let Some(database) = self.database.clone() {
                     return Task::perform(
                         async move {

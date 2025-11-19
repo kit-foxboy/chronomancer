@@ -39,6 +39,10 @@ impl<T: RadioComponent> RadioComponents<T> {
         self.selected = Some(index);
     }
 
+    fn deactivate(&mut self) {
+        self.selected = None;
+    }
+
     /// create a new RadioComponents instance
     pub fn new(options: Vec<T>) -> Self {
         Self {
@@ -82,7 +86,11 @@ impl<T: RadioComponent> RadioComponents<T> {
     /// handle messages to update selected option
     pub fn update(&mut self, message: ComponentMessage) {
         if let ComponentMessage::RadioOptionSelected(index) = message {
-            self.set_active(index);
+            if self.selected == Some(index) {
+                self.deactivate();
+            } else {
+                self.set_active(index);
+            }
         }
     }
 }

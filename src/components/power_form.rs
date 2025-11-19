@@ -22,7 +22,7 @@ pub struct PowerForm {
     pub input_value: String,
     pub time_unit: TimeUnit,
     pub time_unit_options: combo_box::State<TimeUnit>,
-    placeholder_text: String,
+    pub placeholder_text: String,
 }
 
 impl Component for PowerForm {
