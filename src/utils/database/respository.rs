@@ -3,7 +3,6 @@ use sqlx::SqlitePool;
 /// Defines traits for common database repository operations.
 // This doesn't account for joins or composite keys but as this is a simple sqlite driven app with likely one model, it's fine
 pub trait Repository<T> {
-
     /// Inserts a new item into the repository.
     async fn insert(pool: &SqlitePool, item: &T) -> anyhow::Result<T>;
 

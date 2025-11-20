@@ -201,7 +201,7 @@ impl Application for AppModel {
                             .body("Quick timer has ellapsed!")
                             .icon("alarm")
                             .hint(Hint::Category("alarm".to_owned()))
-                            .hint(Hint::Resident(true)) 
+                            .hint(Hint::Resident(true))
                             .timeout(0)
                             .show()
                         {
@@ -274,7 +274,7 @@ impl Application for AppModel {
                 std::any::TypeId::of::<TimerSubscription>(),
                 cosmic::iced::stream::channel(4, move |mut channel| async move {
                     let mut interval = tokio::time::interval(std::time::Duration::from_secs(1));
-                    
+
                     loop {
                         interval.tick().await;
                         if channel.send(Message::TimerTick).await.is_err() {

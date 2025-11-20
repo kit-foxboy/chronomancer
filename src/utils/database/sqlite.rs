@@ -14,13 +14,15 @@ pub struct SQLiteDatabase {
 impl SQLiteDatabase {
     /// Create a new SQLite database connection pool
     pub async fn new() -> Result<Self> {
-        
         // Determine the database file path, create if necessary
-        let data_dir = dirs::data_local_dir().ok_or_else(|| anyhow!("Failed to get data directory"))?.join(APP_ID);
+        let data_dir = dirs::data_local_dir()
+            .ok_or_else(|| anyhow!("Failed to get data directory"))?
+            .join(APP_ID);
         std::fs::create_dir_all(&data_dir)?;
 
         let db_path = data_dir.join(DB_FILENAME);
-        let db_path_str = db_path.to_str()
+        let db_path_str = db_path
+            .to_str()
             .ok_or_else(|| anyhow::anyhow!("Invalid database path"))?;
 
         let options = SqliteConnectOptions::new()
