@@ -166,35 +166,6 @@ CREATE TABLE timers (
     created_at INTEGER NOT NULL
 );
 
--- Reminders (recurring or one-time)
-CREATE TABLE reminders (
-    id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL,
-    reminder_time INTEGER NOT NULL,  -- Unix timestamp
-    recurrence TEXT,  -- NULL, "daily", "weekly", "monthly"
-    is_active INTEGER NOT NULL DEFAULT 1,
-    last_triggered INTEGER,
-    created_at INTEGER NOT NULL
-);
-
--- systemd Services (user-created timer definitions)
-CREATE TABLE systemd_services (
-    id INTEGER PRIMARY KEY,
-    name TEXT UNIQUE NOT NULL,
-    description TEXT,
-    schedule TEXT NOT NULL,  -- OnCalendar= format
-    command TEXT NOT NULL,
-    is_enabled INTEGER NOT NULL DEFAULT 0,
-    created_at INTEGER NOT NULL
-);
-
--- Settings
-CREATE TABLE settings (
-    key TEXT PRIMARY KEY,
-    value TEXT NOT NULL
-);
-```
-
 ## Project Structure
 
 ```
@@ -234,8 +205,29 @@ chronomancer/
 // ✅ DO: Import commonly-used types at module level
 use cosmic::{Action, Task, Element};
 
+// ✅ DO: Nest imports for clarity, structure, and brevity
+use crate::{
+    components::{Component, PowerControls, quick_timers},
+    config::Config,
+    models::{PowerMessage, Timer, TimerMessage},
+    utils::{
+        database::{DatabaseMessage, Repository, SQLiteDatabase},
+        resources,
+    },
+};
+
+// ✅ DO: Use type aliases for commonly-used complex types if needed
+type DbResult<T> = Result<T, anyhow::Error>;
+
 // ❌ DON'T: Use full paths everywhere
 cosmic::Action::App(cosmic::app::Message::...)
+
+// ❌ DON'T: Use functions, structs, or traits more than one item deep.
+let element = cosmic::widget::container(...);
+
+// ❌ DON'T: import multiple items from the same module separately
+use cosmic::Action;
+use cosmic::Task;
 ```
 
 ### Message Design
@@ -267,6 +259,63 @@ fn build_timer_card(timer: &Timer) -> Element<Message> {
 }
 ```
 
+### Message Passing Strategy
+
+**See `.github/architectural-idioms.md` for the full component-to-page message flow pattern.**
+
+Components return `Option<PageMessage>` to signal page-level events. Pages handle these by recursively calling their own `update` method:
+
+```rust
+// Component trait - returns optional page message
+pub trait Component {
+    fn view(&self) -> Element<'_, ComponentMessage>;
+    fn update(&mut self, message: ComponentMessage) -> Option<PageMessage>;
+}
+
+// Component implementation
+impl Component for PowerForm {
+    fn update(&mut self, message: ComponentMessage) -> Option<PageMessage> {
+        match message {
+            ComponentMessage::SubmitPressed => {
+                if self.validate() {
+                    Some(PageMessage::PowerFormSubmitted(self.value()))
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        }
+    }
+}
+
+// Page handles component messages with recursive update
+impl Page for PowerControls {
+    fn update(&mut self, message: PageMessage) -> Task<Action<AppMessage>> {
+        match message {
+            PageMessage::ComponentMessage(msg) => {
+                let page_message = self.component.update(msg);
+                if let Some(page_msg) = page_message {
+                    self.update(page_msg)  // Recursive call
+                } else {
+                    Task::done(Action::None)
+                }
+            }
+            PageMessage::PowerFormSubmitted(value) => {
+                Task::done(Action::App(AppMessage::PowerMessage(
+                    PowerMessage::SetValue(value)
+                )))
+            }
+        }
+    }
+}
+```
+
+**Key Benefits:**
+- No type conversion helpers needed
+- Components don't need `Task` or `Action` types
+- Clear, traceable message flow
+- Self-documenting with `Option<PageMessage>`
+```
 ## Learning & Development Approach
 
 This project is a **learning exercise**. When assisting:
@@ -299,6 +348,14 @@ This project is a **learning exercise**. When assisting:
 
 ## Resources
 
+### Project Documentation
+- **Architectural Idioms:** `.github/architectural-idioms.md` - Component-to-page message flow and other patterns
+- **UI Spacing Guide:** `.github/UI_SPACING_GUIDE.md`
+- **Iterator Patterns:** `.github/iterator-patterns.md`
+- **Icon Theming Notes:** `.github/icon-theming-notes.md`
+- **Macro Explanations:** `.github/macro-explanations.md`
+
+### External Documentation
 - **libcosmic Applets:** https://pop-os.github.io/libcosmic-book/panel-applets.html
 - **libcosmic API:** https://pop-os.github.io/libcosmic/cosmic/
 - **systemd D-Bus API:** https://www.freedesktop.org/wiki/Software/systemd/dbus/
