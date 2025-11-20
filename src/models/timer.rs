@@ -106,3 +106,47 @@ impl Repository<Timer> for Timer {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use anyhow::Result;
+    use sqlx::SqlitePool;
+    async fn setup_db() -> Result<SqlitePool> {
+        let pool = SqlitePool::connect("sqlite::memory:").await?;
+        sqlx::query(
+            "CREATE TABLE timers (
+                id INTEGER PRIMARY KEY,
+                description TEXT NOT NULL,
+                is_recurring BOOLEAN NOT NULL,
+                paused_at INTEGER NOT NULL,
+                ends_at INTEGER NOT NULL,
+                created_at INTEGER NOT NULL
+            )",
+        )
+        .execute(&pool)
+        .await?;
+        Ok(pool)
+    }
+
+    #[tokio::test]
+    async fn test_timer_crud() -> Result<()> {
+        let pool = setup_db().await?;
+        let timer_type = TimerType::UserDefined("Test Timer".into());
+        let new_timer = Timer::new(3600, false, &timer_type);
+        let inserted_timer = Timer::insert(&pool, &new_timer).await?;
+        assert_eq!(inserted_timer.description, "Test Timer");
+
+        let fetched_timer = Timer::get_by_id(&pool, &inserted_timer.id).await?;
+        assert!(fetched_timer.is_some());
+        assert_eq!(fetched_timer.unwrap().id, inserted_timer.id);
+
+        let active_timers = Timer::get_all_active(&pool).await?;
+        assert_eq!(active_timers.len(), 1);
+
+        Timer::delete_by_id(&pool, &inserted_timer.id).await?;
+        let deleted_timer = Timer::get_by_id(&pool, &inserted_timer.id).await?;
+        assert!(deleted_timer.is_none());
+        Ok(())
+    }
+}

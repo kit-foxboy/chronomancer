@@ -115,3 +115,59 @@ impl PowerControls {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+
+    use crate::{
+        fl,
+        pages::{Page, PowerControls},
+        utils::messages::{ComponentMessage, PageMessage},
+    };
+
+    fn get_test_page() -> PowerControls {
+        PowerControls::default()
+    }
+
+    #[test]
+    fn test_create_power_controls() {
+        let page = get_test_page();
+        assert_eq!(page.power_buttons.options.len(), 4);
+        assert_eq!(
+            page.power_form.placeholder_text,
+            fl!("set-time-label", operation = fl!("operation-suspend"))
+        );
+    }
+
+    #[test]
+    fn test_radio_selection_updates_placeholder() {
+        let mut page = get_test_page();
+
+        // Select shutdown option
+        let msg = ComponentMessage::RadioOptionSelected(2);
+        let _ = page.update(PageMessage::ComponentMessage(msg));
+
+        assert_eq!(
+            page.power_form.placeholder_text,
+            fl!("set-time-label", operation = fl!("operation-shutdown"))
+        );
+
+        // Select logout option
+        let msg = ComponentMessage::RadioOptionSelected(3);
+        let _ = page.update(PageMessage::ComponentMessage(msg));
+
+        assert_eq!(
+            page.power_form.placeholder_text,
+            fl!("set-time-label", operation = fl!("operation-logout"))
+        );
+
+        // Select suspend option
+        let msg = ComponentMessage::RadioOptionSelected(1);
+        let _ = page.update(PageMessage::ComponentMessage(msg));
+
+        assert_eq!(
+            page.power_form.placeholder_text,
+            fl!("set-time-label", operation = fl!("operation-suspend"))
+        );
+    }
+}

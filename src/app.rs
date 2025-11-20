@@ -5,7 +5,8 @@ use cosmic::{
     cosmic_config::{self, CosmicConfigEntry},
     cosmic_theme::Spacing,
     iced::{
-        Limits, Subscription, platform_specific::shell::commands::popup, widget::column, window,
+        Limits, Subscription, platform_specific::shell::commands::popup, stream::channel,
+        widget::column, window,
     },
     iced_runtime::Appearance,
     theme,
@@ -196,7 +197,7 @@ impl Application for AppModel {
             // Timer tick subscription - fires every second
             Subscription::run_with_id(
                 std::any::TypeId::of::<TimerSubscription>(),
-                cosmic::iced::stream::channel(4, move |mut channel| async move {
+                channel(4, move |mut channel| async move {
                     let mut interval = tokio::time::interval(std::time::Duration::from_secs(1));
 
                     loop {
@@ -227,14 +228,17 @@ impl AppModel {
             let new_id = window::Id::unique();
             self.popup.replace(new_id);
 
-            // Get the popup settings from the applet
-            let mut popup_settings = self.core.applet.get_popup_settings(
-                self.core.main_window_id().unwrap(),
-                new_id,
-                Some((500, 500)),
-                None,
-                None,
-            );
+            // Get the main window id; in test contexts this may be None. If absent, we still
+            // record that a popup is "open" but return no window task.
+            let Some(main_id) = self.core.main_window_id() else {
+                // No main window; treat as opened logically without creating actual popup window
+                return Task::none();
+            };
+
+            let mut popup_settings =
+                self.core
+                    .applet
+                    .get_popup_settings(main_id, new_id, Some((500, 500)), None, None);
 
             // Set minimum size limits for the popup
             popup_settings.positioner.size_limits = Limits::NONE.min_width(300.0).min_height(150.0);
@@ -505,3 +509,433 @@ impl AppModel {
 //         }
 //     }
 // }
+
+#[cfg(test)]
+mod tests {
+    use crate::utils::messages::ComponentMessage;
+
+    use super::*;
+
+    fn get_test_app() -> AppModel {
+        AppModel::init(Core::default(), ()).0
+    }
+
+    #[test]
+    fn test_app_initialization() {
+        let app = get_test_app();
+        assert_eq!(app.icon_name, "chronomancer-hourglass");
+        assert!(
+            app.popup.is_none(),
+            "Popup should be None on initialization"
+        );
+        assert!(
+            app.database.is_none(),
+            "Database should be None on initialization"
+        );
+        assert!(
+            app.suspend_inhibitor.is_none(),
+            "Suspend inhibitor should be None on initialization"
+        );
+        assert!(
+            app.active_timers.is_empty(),
+            "Active timers should be empty on initialization"
+        );
+    }
+
+    #[test]
+    fn test_popup() {
+        let mut app = get_test_app();
+
+        // Initially no popup
+        assert!(app.popup.is_none(), "Popup should be closed by default");
+
+        // Toggle open (may be a no-op window task if no main window id yet, but popup Option gets set)
+        let _task_open = app.toggle_popup();
+        assert!(app.popup.is_some(), "Popup should be opened after toggle");
+
+        // Toggle closed
+        let _task_close = app.toggle_popup();
+        assert!(
+            app.popup.is_none(),
+            "Popup should be closed after second toggle"
+        );
+    }
+
+    #[test]
+    fn test_tick_with_active_timer() {
+        let mut app = get_test_app();
+
+        // To ensure handle_tick removes it immediately, set ends_at to a past second value.
+        let now_sec = chrono::Utc::now().timestamp();
+        let expired_timer = Timer {
+            id: 1,
+            is_recurring: false,
+            description: TimerType::UserDefined("Renamon exists reminder".to_string())
+                .as_str()
+                .to_string(),
+            paused_at: 0,
+            created_at: now_sec - 5, // created slightly in the past
+            ends_at: now_sec - 1,    // already expired
+        };
+        app.active_timers.push(expired_timer);
+
+        // Handle tick; should remove the expired timer
+        let task = app.handle_tick();
+
+        // Active timers list should now be empty
+        assert!(
+            app.active_timers.is_empty(),
+            "Expired timer should be removed after tick"
+        );
+
+        // Consume task (cannot inspect internals here)
+        let _ = task;
+    }
+
+    #[test]
+    fn test_handle_tick_no_timers() {
+        let mut app = get_test_app();
+
+        // Ensure no active timers
+        app.active_timers.clear();
+
+        // Handle tick; should not schedule any follow-up actions since there are no timers.
+        let _task = app.handle_tick();
+
+        // State should remain unchanged (still no active timers).
+        assert!(
+            app.active_timers.is_empty(),
+            "Active timers should remain empty after tick"
+        );
+    }
+
+    #[test]
+    fn test_handle_page_message_power_controls() {
+        let mut app = get_test_app();
+
+        // Create a sample PageMessage for PowerControls
+        let msg = PageMessage::ComponentMessage(ComponentMessage::SubmitPressed);
+
+        // Handle the message
+        let task = app.handle_page_message(msg);
+
+        // Since PowerControls does not handle SubmitPressed, no task should be scheduled.
+        let _ = task.map(|_action| {
+            unreachable!("Uh-oh, spaghettios, SubmitPressed should not produce any action here!");
+        });
+    }
+
+    // Verify that the tick subscription produces Tick messages at 1-second intervals.
+    // We spawn the stream and verify it sends messages, then cancel it.
+    #[tokio::test]
+    async fn test_tick_subscription_interval() {
+        use cosmic::iced::futures::StreamExt;
+        use cosmic::iced::stream::channel;
+        use tokio::time::{Duration, timeout};
+
+        // Use the same channel function signature as in the actual subscription
+        let stream = channel(4, |mut output| async move {
+            let mut interval = tokio::time::interval(std::time::Duration::from_secs(1));
+            loop {
+                interval.tick().await;
+                if output.send(Message::Tick).await.is_err() {
+                    break;
+                }
+            }
+        });
+
+        tokio::pin!(stream);
+
+        // Verify we can receive multiple Tick messages
+        for i in 1..=3 {
+            let result = timeout(Duration::from_secs(2), stream.next()).await;
+            match result {
+                Ok(Some(msg)) => {
+                    assert!(
+                        matches!(msg, Message::Tick),
+                        "Expected Tick message, got something else"
+                    );
+                    println!("Successfully received tick {i}");
+                }
+                Ok(None) => panic!("Stream closed unexpectedly after {i} ticks"),
+                Err(err) => panic!("Timeout waiting for tick {i}. Error: {err}"),
+            }
+        }
+    }
+
+    #[test]
+    fn test_update_toggle_popup() {
+        let mut app = get_test_app();
+
+        // Initially no popup
+        assert!(app.popup.is_none());
+
+        // Send TogglePopup message
+        let _task = app.update(Message::TogglePopup);
+
+        // Popup should now be open
+        assert!(app.popup.is_some());
+
+        // Toggle again
+        let _task = app.update(Message::TogglePopup);
+
+        // Popup should be closed
+        assert!(app.popup.is_none());
+    }
+
+    #[test]
+    fn test_update_config() {
+        let mut app = get_test_app();
+
+        let new_config = Config::default();
+
+        // Update config
+        let _task = app.update(Message::UpdateConfig(new_config.clone()));
+
+        // Config should be updated (compare equality)
+        assert_eq!(app.config, new_config);
+    }
+
+    #[test]
+    fn test_update_tick_message() {
+        let mut app = get_test_app();
+
+        // Create an expired timer
+        let now_sec = chrono::Utc::now().timestamp();
+        let expired_timer = Timer {
+            id: 1,
+            is_recurring: false,
+            description: TimerType::UserDefined("Test".to_string())
+                .as_str()
+                .to_string(),
+            paused_at: 0,
+            created_at: now_sec - 5,
+            ends_at: now_sec - 1,
+        };
+        app.active_timers.push(expired_timer);
+
+        // Send Tick message
+        let _task = app.update(Message::Tick);
+
+        // Timer should be removed
+        assert!(app.active_timers.is_empty());
+    }
+
+    #[test]
+    fn test_handle_timer_message_created_success() {
+        let mut app = get_test_app();
+
+        let timer = Timer {
+            id: 1,
+            is_recurring: false,
+            description: "Test Timer".to_string(),
+            paused_at: 0,
+            created_at: chrono::Utc::now().timestamp(),
+            ends_at: chrono::Utc::now().timestamp() + 3600,
+        };
+
+        let msg = TimerMessage::Created(Ok(timer.clone()));
+        let _task = app.update(Message::TimerMessage(msg));
+
+        // Timer should be added to active timers
+        assert_eq!(app.active_timers.len(), 1);
+        assert_eq!(app.active_timers[0].id, timer.id);
+    }
+
+    #[test]
+    fn test_handle_timer_message_created_failure() {
+        let mut app = get_test_app();
+
+        let msg = TimerMessage::Created(Err("Database error".to_string()));
+        let _task = app.update(Message::TimerMessage(msg));
+
+        // No timers should be added
+        assert!(app.active_timers.is_empty());
+    }
+
+    #[test]
+    fn test_handle_timer_message_active_fetched_success() {
+        let mut app = get_test_app();
+
+        let timer1 = Timer {
+            id: 1,
+            is_recurring: false,
+            description: "Timer 1".to_string(),
+            paused_at: 0,
+            created_at: chrono::Utc::now().timestamp(),
+            ends_at: chrono::Utc::now().timestamp() + 3600,
+        };
+
+        let timer2 = Timer {
+            id: 2,
+            is_recurring: false,
+            description: "Timer 2".to_string(),
+            paused_at: 0,
+            created_at: chrono::Utc::now().timestamp(),
+            ends_at: chrono::Utc::now().timestamp() + 7200,
+        };
+
+        let timers = vec![timer1.clone(), timer2.clone()];
+        let msg = TimerMessage::ActiveFetched(Ok(timers));
+        let _task = app.update(Message::TimerMessage(msg));
+
+        // Active timers should be populated
+        assert_eq!(app.active_timers.len(), 2);
+        assert_eq!(app.active_timers[0].id, timer1.id);
+        assert_eq!(app.active_timers[1].id, timer2.id);
+    }
+
+    #[test]
+    fn test_handle_timer_message_active_fetched_failure() {
+        let mut app = get_test_app();
+
+        // Add a timer first
+        app.active_timers.push(Timer {
+            id: 1,
+            is_recurring: false,
+            description: "Existing Timer".to_string(),
+            paused_at: 0,
+            created_at: chrono::Utc::now().timestamp(),
+            ends_at: chrono::Utc::now().timestamp() + 3600,
+        });
+
+        let msg = TimerMessage::ActiveFetched(Err("Fetch failed".to_string()));
+        let _task = app.update(Message::TimerMessage(msg));
+
+        // Existing timers should remain unchanged
+        assert_eq!(app.active_timers.len(), 1);
+    }
+
+    #[test]
+    fn test_handle_database_message_failed_to_initialize() {
+        let mut app = get_test_app();
+
+        let msg = DatabaseMessage::FailedToInitialize("Connection error".to_string());
+        let _task = app.update(Message::DatabaseMessage(msg));
+
+        // Database should remain None
+        assert!(app.database.is_none());
+    }
+
+    #[test]
+    fn test_handle_power_message_toggle_stay_awake_acquire() {
+        let mut app = get_test_app();
+
+        // Initially no inhibitor
+        assert!(app.suspend_inhibitor.is_none());
+
+        // Send ToggleStayAwake message (should acquire inhibitor via task)
+        let _task = app.update(Message::PowerMessage(PowerMessage::ToggleStayAwake));
+
+        // Note: The actual inhibitor acquisition happens in the async task,
+        // so we can only verify the task is created, not that inhibitor is set
+        // The inhibitor will be None until the task completes
+        assert!(app.suspend_inhibitor.is_none());
+    }
+
+    #[test]
+    fn test_handle_power_message_toggle_stay_awake_release() {
+        let mut app = get_test_app();
+
+        // Create a fake file descriptor for testing
+        // Note: This is a simplified test; in production we'd mock the resource module
+        let temp_file = std::env::temp_dir().join("chronomancer_test_inhibitor");
+        let file = std::fs::File::create(&temp_file).unwrap();
+        app.suspend_inhibitor = Some(file);
+
+        assert!(app.suspend_inhibitor.is_some());
+
+        // Send ToggleStayAwake message (should release inhibitor)
+        let _task = app.update(Message::PowerMessage(PowerMessage::ToggleStayAwake));
+
+        // Inhibitor should be released
+        assert!(app.suspend_inhibitor.is_none());
+
+        // Cleanup
+        let _ = std::fs::remove_file(&temp_file);
+    }
+
+    #[test]
+    fn test_handle_power_message_inhibit_acquired_success() {
+        let mut app = get_test_app();
+
+        // Create a temporary file to simulate the inhibitor
+        let temp_file = std::env::temp_dir().join("chronomancer_test_inhibitor2");
+        let file = std::fs::File::create(&temp_file).unwrap();
+
+        let msg = PowerMessage::InhibitAcquired(Arc::new(Ok(file)));
+        let _task = app.update(Message::PowerMessage(msg));
+
+        // Inhibitor should be set
+        assert!(app.suspend_inhibitor.is_some());
+
+        // Cleanup
+        app.suspend_inhibitor = None;
+        let _ = std::fs::remove_file(&temp_file);
+    }
+
+    #[test]
+    fn test_handle_power_message_inhibit_acquired_failure() {
+        let mut app = get_test_app();
+
+        let msg = PowerMessage::InhibitAcquired(Arc::new(Err("Failed to acquire".to_string())));
+        let _task = app.update(Message::PowerMessage(msg));
+
+        // Inhibitor should remain None
+        assert!(app.suspend_inhibitor.is_none());
+    }
+
+    #[test]
+    fn test_update_page_message() {
+        let mut app = get_test_app();
+
+        let msg = PageMessage::ComponentMessage(ComponentMessage::SubmitPressed);
+        let _task = app.update(Message::PageMessage(msg));
+
+        // The message is forwarded to power_controls.update()
+        // We can't easily verify internal state without exposing it,
+        // but we can verify no panic occurs
+        // and trust the damn thing to test itself in its own tests
+    }
+
+    #[test]
+    fn test_multiple_timer_creation_and_removal() {
+        let mut app = get_test_app();
+        let now = chrono::Utc::now().timestamp();
+
+        // Create multiple timers
+        for i in 1..=3 {
+            let timer = Timer {
+                id: i,
+                is_recurring: false,
+                description: format!("Timer {i}"),
+                paused_at: 0,
+                created_at: now,
+                ends_at: now + 3600 + (i * 100),
+            };
+            let msg = TimerMessage::Created(Ok(timer));
+            let _task = app.update(Message::TimerMessage(msg));
+        }
+
+        assert_eq!(app.active_timers.len(), 3);
+
+        // Create an expired timer
+        let expired = Timer {
+            id: 4,
+            is_recurring: false,
+            description: "Expired".to_string(),
+            paused_at: 0,
+            created_at: now - 10,
+            ends_at: now - 1,
+        };
+        let msg = TimerMessage::Created(Ok(expired));
+        let _task = app.update(Message::TimerMessage(msg));
+
+        assert_eq!(app.active_timers.len(), 4);
+
+        // Tick should remove expired timer
+        let _task = app.update(Message::Tick);
+
+        assert_eq!(app.active_timers.len(), 3);
+    }
+}

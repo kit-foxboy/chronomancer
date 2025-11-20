@@ -19,17 +19,21 @@ impl ToggleIconRadio {
     pub fn new(index: usize, name: &'static str) -> Self {
         Self { index, name }
     }
+
+    /// Determine the button style based on its active state.
+    #[allow(clippy::unused_self)]
+    pub fn button_style(&self, is_active: bool) -> theme::Button {
+        if is_active {
+            theme::Button::Suggested
+        } else {
+            theme::Button::Text
+        }
+    }
 }
 
 impl RadioComponent for ToggleIconRadio {
     /// Render the toggle icon radio button.
     fn view(&self, is_active: bool) -> Element<'_, ComponentMessage> {
-        let button_style = if is_active {
-            theme::Button::Suggested
-        } else {
-            theme::Button::Text
-        };
-
         button::custom(
             container(resources::system_icon(self.name, ComponentSize::ICON_SIZE))
                 .width(Length::Fill)
@@ -38,7 +42,26 @@ impl RadioComponent for ToggleIconRadio {
         .on_press(ComponentMessage::RadioOptionSelected(self.index))
         .width(Length::Fill)
         .height(ComponentSize::ICON_BUTTON_HEIGHT)
-        .class(button_style)
+        .class(self.button_style(is_active))
         .into()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_toggle_icon_radio_style_active() {
+        let radio = ToggleIconRadio::new(0, "test-icon");
+        let style = radio.button_style(true);
+        assert!(matches!(style, theme::Button::Suggested));
+    }
+
+    #[test]
+    fn test_toggle_icon_radio_style_inactive() {
+        let radio = ToggleIconRadio::new(1, "test-icon");
+        let style = radio.button_style(false);
+        assert!(matches!(style, theme::Button::Text));
     }
 }

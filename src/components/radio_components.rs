@@ -75,3 +75,54 @@ impl<T: RadioComponent> RadioComponents<T> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use cosmic::widget::Space;
+
+    use super::*;
+
+    #[derive(Debug, Clone)]
+    struct MockRadioOption {
+        #[allow(dead_code)]
+        pub index: usize,
+    }
+
+    impl RadioComponent for MockRadioOption {
+        fn view(&self, _is_active: bool) -> Element<'_, ComponentMessage> {
+            // Simplified view for testing
+            Space::new(10, 10).into()
+        }
+    }
+
+    impl MockRadioOption {
+        pub fn new(index: usize) -> Self {
+            Self { index }
+        }
+    }
+
+    #[test]
+    fn test_radio_components_selection() {
+        let options = vec![
+            MockRadioOption::new(0),
+            MockRadioOption::new(1),
+            MockRadioOption::new(2),
+        ];
+        let mut radio_components = RadioComponents::new(options);
+
+        // Initially, no option should be selected
+        assert_eq!(radio_components.selected, None);
+
+        // Select the first option
+        radio_components.update(&ComponentMessage::RadioOptionSelected(0));
+        assert_eq!(radio_components.selected, Some(0));
+
+        // Select the second option
+        radio_components.update(&ComponentMessage::RadioOptionSelected(1));
+        assert_eq!(radio_components.selected, Some(1));
+
+        // Deselect the second option
+        radio_components.update(&ComponentMessage::RadioOptionSelected(1));
+        assert_eq!(radio_components.selected, None);
+    }
+}

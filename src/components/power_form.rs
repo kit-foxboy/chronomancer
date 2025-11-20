@@ -102,3 +102,61 @@ impl PowerForm {
         self.time_unit = TimeUnit::Seconds;
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_power_form_creation() {
+        let form = PowerForm::new("Enter time");
+        assert_eq!(form.input_value, "");
+        assert_eq!(form.time_unit, TimeUnit::Seconds);
+        assert_eq!(form.placeholder_text, "Enter time");
+    }
+
+    #[test]
+    fn test_power_form_update_text() {
+        let mut form = PowerForm::new("Enter time");
+        form.update(ComponentMessage::TextChanged("15".to_string()));
+        assert_eq!(form.input_value, "15");
+    }
+
+    #[test]
+    fn test_power_form_update_time_unit() {
+        let mut form = PowerForm::new("Enter time");
+        form.update(ComponentMessage::TimeUnitChanged(TimeUnit::Minutes));
+        assert_eq!(form.time_unit, TimeUnit::Minutes);
+    }
+
+    #[test]
+    fn test_power_form_submit_valid() {
+        let mut form = PowerForm::new("Enter time");
+        form.input_value = "5".to_string();
+        form.time_unit = TimeUnit::Minutes;
+        let result = form.update(ComponentMessage::SubmitPressed);
+
+        assert!(result.is_some());
+        if let PageMessage::PowerFormSubmitted(time) = result.unwrap() {
+            assert_eq!(time, 300); // 5 minutes in seconds XwX
+        } else {
+            panic!("Expected PowerFormSubmitted message");
+        }
+    }
+
+    #[test]
+    fn test_power_form_submit_invalid() {
+        let mut form = PowerForm::new("Enter time");
+        form.input_value = "potato".to_string();
+        let result = form.update(ComponentMessage::SubmitPressed);
+        assert!(result.is_none());
+        assert_eq!(form.input_value, "");
+    }
+
+    #[test]
+    fn test_power_form_validation() {
+        let mut form = PowerForm::new("Enter time");
+        form.input_value = "10".to_string();
+        assert!(form.validate_input());
+    }
+}
