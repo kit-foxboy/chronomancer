@@ -1,6 +1,7 @@
-use crate::app::APP_ID;
 use anyhow::{Result, anyhow};
 use sqlx::{SqlitePool, sqlite::SqliteConnectOptions};
+
+const APP_ID: &str = "com.github.kit-foxboy.chronomancer";
 
 /// `SQLite` database filename
 const DB_VERSION: &str = "1";
@@ -34,6 +35,17 @@ impl SQLiteDatabase {
         sqlx::migrate!("./migrations").run(&pool).await?;
 
         println!("Database migrations completed successfully");
+
+        Ok(Self { pool })
+    }
+
+    #[allow(dead_code)]
+    pub async fn new_in_memory() -> Result<Self> {
+        // Create connection pool and run migrations
+        let pool = SqlitePool::connect("sqlite::memory:").await?;
+        sqlx::migrate!("./migrations").run(&pool).await?;
+
+        println!("In-memory database migrations completed successfully");
 
         Ok(Self { pool })
     }

@@ -28,6 +28,8 @@ use crate::{
         resources,
     },
 };
+
+const APP_ID: &str = "com.github.kit-foxboy.chronomancer";
 // const REPOSITORY: &str = env!("CARGO_PKG_REPOSITORY");
 // const APP_ICON: &[u8] = include_bytes!("../resources/icons/hicolor/scalable/apps/hourglass.svg");
 
@@ -55,8 +57,6 @@ pub struct AppModel {
     /// Power control component
     power_controls: PowerControls,
 }
-
-pub const APP_ID: &str = "com.github.kit-foxboy.chronomancer";
 
 /// Create a COSMIC application from the app model
 impl Application for AppModel {
