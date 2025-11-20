@@ -1,0 +1,46 @@
+on: [push, pull_request]
+jobs:
+  lint:
+    name: Format & Clippy (pedantic)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxkbcommon-dev libwayland-dev libegl1-mesa-dev libfontconfig1-dev
+
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          components: rustfmt, clippy
+          override: true
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+
+      - name: Verify formatting
+        run: cargo fmt --all -- --check
+
+      - name: Clippy (pedantic, deny warnings)
+        run: cargo clippy --all-targets --all-features -- -W clippy::pedantic -D warnings
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "Formatter and Clippy pedantic run complete."
+          echo "Status: ${{ job.status }}"

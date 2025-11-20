@@ -12,6 +12,7 @@ mod components;
 mod config;
 mod i18n;
 mod models;
+mod pages;
 mod utils;
 
 fn main() -> Result {
