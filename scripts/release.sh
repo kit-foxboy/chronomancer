@@ -25,8 +25,8 @@
 #   - appstreamcli (recommended; install via your distro)
 #
 # After running, manually:
-#   - Commit changes: git add flatpak/cargo-sources.json resources/app.metainfo.xml
-#   - git commit -m "Release vx.y.z"
+#   - Commit changes: git add flatpak/${APP_ID}.yml cargo-sources.json resources/app.metainfo.xml
+#   - git commit -m "Release ${VERSION}"
 #   - Test Flatpak build locally before opening Flathub PR.
 #
 set -euo pipefail
@@ -150,25 +150,26 @@ if [[ "${SKIP_SOURCES:-}" == "1" ]]; then
   info "Skipping cargo-sources generation (SKIP_SOURCES=1)"
 else
   if ! command -v flatpak-cargo-generator >/dev/null 2>&1; then
-    warn "flatpak-cargo-generator not found, attempting install via pip or pipx"
+    warn "flatpak-cargo-generator not found, attempting install via pipx or pip"
     if [[ "${DRY_RUN:-}" != "1" ]]; then
-        if command -v pipx >/dev/null 2>&1; then
-            info "Installing flatpak-cargo-generator via pipx"
-            pipx install flatpak-cargo-generator || {
-                err "Failed to install flatpak-cargo-generator with pipx"
-                exit 1
-            }
-    elif command -v pip >/dev/null 2>&1; then
+      if command -v pipx >/dev/null 2>&1; then
+        info "Installing flatpak-cargo-generator via pipx"
+        pipx install flatpak-cargo-generator || {
+          err "Failed to install flatpak-cargo-generator with pipx"
+          exit 1
+        }
+      elif command -v pip >/dev/null 2>&1; then
         info "Installing flatpak-cargo-generator via pip"
         pip install --user flatpak-cargo-generator || {
           err "Failed to install flatpak-cargo-generator with pip"
           exit 1
         }
-    else
-          err "Neither pipx nor pip found; cannot install flatpak-cargo-generator"
-          exit 1
+      else
+        err "Neither pipx nor pip found; cannot install flatpak-cargo-generator"
+        exit 1
+      fi
+      export PATH="$HOME/.local/bin:$PATH"
     fi
-    export PATH="$HOME/.local/bin:$PATH"
   fi
   info "Generating ${CARGO_SOURCES}"
   run "flatpak-cargo-generator ${CARGO_LOCK} -o ${CARGO_SOURCES}"
