@@ -391,9 +391,10 @@ just install
 ## Data Storage
 
 Follow XDG Base Directory specification:
-- **Config:** `~/.config/com.github.kit-foxboy.chronomancer/`
-- **Data:** `~/.local/share/com.github.kit-foxboy.chronomancer/`
-- **Database:** `~/.local/share/com.github.kit-foxboy.chronomancer/chronomancer.db`
+- **Config:** `~/.config/com.vulpineinteractive.chronomancer/`
+- **Data:** `~/.local/share/com.vulpineinteractive.chronomancer/`
+- **Database:** `~/.local/share/com.vulpineinteractive.chronomancer/chronomancer.db`
+
 
 ## License
 

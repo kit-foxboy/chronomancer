@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>com.github.kit-foxboy.chronomancer</id>
+  <id>com.vulpineinteractive.chronomancer</id>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>MIT</project_license>
   <name>Chronomancer</name>
-  <summary>An applet for managing system timers</summary>
+  <summary>Applet for managing timers, reminders, and sleep overrides</summary>
   <description>
     <p>Chronomancer is a simple and elegant applet for managing system timers. It allows users to keep their system awake or set times for suspend, shutdown, and logout.</p>
     <p>Current Features</p>
@@ -21,15 +21,23 @@
       <li>Set up recurring timers (i.e. reminders)</li>
     </ul>
     <p>Chronomancer is a useful utility applet for anyone who frequently schedules system actions.</p>
-  <icon type="remote" width="64" height="64" scale="1">
-    https://github.com/kit-foxboy/chronomancer/raw/main/resources/icons/hicolor/scalable/apps/hourglass.svg
-  </icon>
+  </description>
+  <screenshots>
+    <screenshot type="default">
+      <image>https://github.com/kit-foxboy/chronomancer/raw/main/resources/screenshots/chronomancer-0.1.0-main.png</image>
+      <caption>Chronomancer main popup showing power override controls</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://github.com/kit-foxboy/chronomancer/raw/main/resources/screenshots/stay-awake-0.1.0-reminder.png</image>
+      <caption>Stay awake button in action, showing the status in your panel or dock</caption>
+    </screenshot>
+  </screenshots>
   <url type="vcs-browser">https://github.com/kit-foxboy/chronomancer</url>
   <url type="homepage">https://github.com/kit-foxboy/chronomancer</url>
   <url type="bugtracker">https://github.com/kit-foxboy/chronomancer/issues</url>
-  <launchable type="desktop-id">com.github.kit-foxboy.chronomancer.desktop</launchable>
+  <launchable type="desktop-id">com.vulpineinteractive.chronomancer.desktop</launchable>
   <provides>
-    <id>com.github.kit-foxboy.chronomancer</id>
+    <id>com.vulpineinteractive.chronomancer</id>
     <binaries>
       <binary>chronomancer</binary>
     </binaries>

@@ -2,7 +2,7 @@
 Name=Chronomancer
 Comment=An applet for creating and managing system timers
 Type=Application
-Icon=com.github.kit-foxboy.chronomancer
+Icon=com.vulpineinteractive.chronomancer
 Exec=chronomancer %F
 Terminal=false
 StartupNotify=true

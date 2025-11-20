@@ -4,7 +4,7 @@
 # IMPORTANT ACTIONS BEFORE SUBMITTING TO FLATHUB:
 # 1. Tag the repository: git tag -a v0.1.0 -m "v0.1.0" && git push --tags
 # 2. Generate cargo-sources.json:
-#      flatpak-cargo-generator --lockfile Cargo.lock -o cargo-sources.json
+#      flatpak-cargo-generator Cargo.lock -o cargo-sources.json
 #    (Install with: pip install flatpak-cargo-generator)
 # 3. Download the tagged source archive and compute its sha256:
 #      curl -L -o chronomancer-v0.1.0.tar.gz \
@@ -23,7 +23,7 @@
 # pinned commit to allow an offline cargo build inside Flatpak.
 # ============================================================
 
-id: com.github.kit-foxboy.chronomancer
+id: com.vulpineinteractive.chronomancer
 runtime: org.freedesktop.Platform
 runtime-version: "23.08"
 sdk: org.freedesktop.Sdk
@@ -35,8 +35,8 @@ command: chronomancer
 # platform later, consider migrating.
 
 # Metadata
-rename-desktop-file: com.github.kit-foxboy.chronomancer.desktop
-rename-appdata-file: com.github.kit-foxboy.chronomancer.metainfo.xml
+rename-desktop-file: com.vulpineinteractive.chronomancer.desktop
+rename-appdata-file: com.vulpineinteractive.chronomancer.metainfo.xml
 finish-args:
   # Display / graphics
   - --socket=wayland
@@ -50,8 +50,8 @@ finish-args:
   # Network might not be strictly required; omit unless needed:
   # - --share=network
   # Persist data per XDG spec inside /app and exported dirs
-  - --persist=.local/share/com.github.kit-foxboy.chronomancer
-  - --persist=.config/com.github.kit-foxboy.chronomancer
+  - --persist=.local/share/com.vulpineinteractive.chronomancer
+  - --persist=.config/com.vulpineinteractive.chronomancer
 
 # Build options
 build-options:
@@ -83,11 +83,8 @@ modules:
       # Tagged source archive of the application itself
       - type: archive
         url: https://github.com/kit-foxboy/chronomancer/archive/refs/tags/v0.1.0.tar.gz
-        sha256: REPLACE_ME_SHA256
-        dest: chronomancer-src
-      # Generated crate sources from flatpak-cargo-generator
-      - type: file
-        path: cargo-sources.json
+        sha256: d097bacd5258b04e718d0f6d58ddbcd4a5126acfab85dffc5531786503eb57c5
+      - cargo-sources.json
 
     # Extra cargo configuration (release build)
     build-commands:
@@ -104,10 +101,10 @@ modules:
       - install -Dm0755 target/release/chronomancer /app/bin/chronomancer
       # Install desktop entry (rename to match app-id)
       - install -Dm0644 resources/app.desktop \
-        /app/share/applications/com.github.kit-foxboy.chronomancer.desktop
+        /app/share/applications/com.vulpineinteractive.chronomancer.desktop
       # Install appstream metadata (renamed)
       - install -Dm0644 resources/app.metainfo.xml \
-        /app/share/metainfo/com.github.kit-foxboy.chronomancer.metainfo.xml
+        /app/share/metainfo/com.vulpineinteractive.chronomancer.metainfo.xml
       # Install icons (scalable)
       - |
         for icon in resources/icons/hicolor/scalable/apps/*.svg; do
@@ -117,7 +114,7 @@ modules:
         done
       # Primary application icon
       - install -Dm0644 resources/icons/hicolor/scalable/apps/hourglass.svg \
-        /app/share/icons/hicolor/scalable/apps/com.github.kit-foxboy.chronomancer.svg
+        /app/share/icons/hicolor/scalable/apps/com.vulpineinteractive.chronomancer.svg
       # Update icon cache (optional; Flathub may handle)
       - mkdir -p /app/share/icons/hicolor
       - touch /app/share/icons/hicolor/.generated
@@ -140,8 +137,8 @@ modules:
 #
 # Testing locally:
 #   flatpak-builder --user --install --force-clean build-dir \
-#     chronomancer/flatpak/com.github.kit-foxboy.chronomancer.yml
-#   flatpak run com.github.kit-foxboy.chronomancer
+#     chronomancer/flatpak/com.vulpineinteractive.chronomancer.yml
+#   flatpak run com.vulpineinteractive.chronomancer
 #
 # If runtime-version 24.08 is available and compatible with libcosmic,
 # you may migrate later for newer dependencies.

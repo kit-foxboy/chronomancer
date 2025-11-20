@@ -1,5 +1,5 @@
 name := 'chronomancer'
-appid := 'com.github.kit-foxboy.chronomancer'
+appid := 'com.vulpineinteractive.chronomancer'
 
 rootdir := ''
 prefix := '/usr'

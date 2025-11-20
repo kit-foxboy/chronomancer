@@ -29,7 +29,7 @@ use crate::{
     },
 };
 
-const APP_ID: &str = "com.github.kit-foxboy.chronomancer";
+const APP_ID: &str = "com.vulpineinteractive.chronomancer";
 // const REPOSITORY: &str = env!("CARGO_PKG_REPOSITORY");
 // const APP_ICON: &[u8] = include_bytes!("../resources/icons/hicolor/scalable/apps/hourglass.svg");
 

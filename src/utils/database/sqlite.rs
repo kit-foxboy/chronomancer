@@ -1,7 +1,7 @@
 use anyhow::{Result, anyhow};
 use sqlx::{SqlitePool, sqlite::SqliteConnectOptions};
 
-const APP_ID: &str = "com.github.kit-foxboy.chronomancer";
+const APP_ID: &str = "com.vulpineinteractive.chronomancer";
 
 /// `SQLite` database filename
 const DB_VERSION: &str = "1";
