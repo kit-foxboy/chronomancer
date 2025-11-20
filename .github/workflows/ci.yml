@@ -24,6 +24,11 @@ jobs:
         with:
           components: clippy, rustfmt
 
+      - name: Set Toolchain Input
+        env:
+          toolchain: stable
+        run: echo "Toolchain set to ${toolchain}"
+
       - name: Cache cargo
         uses: actions/cache@v4
         with:
@@ -38,8 +43,8 @@ jobs:
       - name: Verify formatting
         run: cargo fmt --all -- --check
 
-      - name: Clippy (pedantic, advisory)
-        run: cargo clippy --all-targets --all-features -- -W clippy::pedantic
+      - name: Clippy (pedantic, deny warnings)
+        run: cargo clippy --all-targets --all-features -- -W clippy::pedantic -D warnings
 
       - name: Summary
         if: always()
