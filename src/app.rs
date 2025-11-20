@@ -14,7 +14,7 @@ use cosmic::{
 };
 use futures_util::SinkExt;
 use notify_rust::{Hint, Notification};
-use std::{fs::File, sync::Arc};
+use std::{fs::File, str::FromStr, sync::Arc};
 
 use crate::{
     config::Config,
@@ -252,24 +252,24 @@ impl AppModel {
         for timer in self.active_timers.clone() {
             if !timer.is_active() {
                 match TimerType::from_str(&timer.description) {
-                    TimerType::Suspend => {
+                    Ok(TimerType::Suspend) => {
                         // Execute system suspend
                         tasks.push(Task::done(Action::App(Message::PowerMessage(
                             PowerMessage::ExecuteSuspend,
                         ))));
                     }
-                    TimerType::Logout => {
+                    Ok(TimerType::Logout) => {
                         // Execute system logout
                         tasks.push(Task::done(Action::App(Message::PowerMessage(
                             PowerMessage::ExecuteLogout,
                         ))));
                     }
-                    TimerType::Shutdown => {
+                    Ok(TimerType::Shutdown) => {
                         tasks.push(Task::done(Action::App(Message::PowerMessage(
                             PowerMessage::ExecuteShutdown,
                         ))));
                     }
-                    TimerType::UserDefined(ref description) => {
+                    Ok(TimerType::UserDefined(ref description)) => {
                         if let Err(e) = Notification::new()
                             .summary("Timer Finished")
                             .body(description.as_str())
@@ -281,6 +281,9 @@ impl AppModel {
                         {
                             eprintln!("Failed to send notification: {e}");
                         }
+                    }
+                    Err(e) => {
+                        eprintln!("Failed to parse timer type: {e}");
                     }
                 }
 

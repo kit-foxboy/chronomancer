@@ -7,8 +7,8 @@
 //! Integration tests being separated is very sensible at least.
 //! Coming from TypeScript, I prefer tests that treat modules as black boxes,
 //! focusing on public interfaces rather than implementation details.
-
 use chronomancer::models::timer::{Timer, TimerType};
+use std::str::FromStr;
 
 // ============================================================================
 // Basic Timer Creation and State
@@ -26,20 +26,20 @@ fn timer_creation_basic() {
 #[test]
 fn timer_type_conversions() {
     // Test all built-in types
-    let suspend = TimerType::from_str("System Suspend");
+    let suspend = TimerType::from_str("System Suspend").expect("Failed to parse System Suspend");
     assert!(matches!(suspend, TimerType::Suspend));
     assert_eq!(suspend.as_str(), "System Suspend");
 
-    let logout = TimerType::from_str("System Logout");
+    let logout = TimerType::from_str("System Logout").expect("Failed to parse System Logout");
     assert!(matches!(logout, TimerType::Logout));
     assert_eq!(logout.as_str(), "System Logout");
 
-    let shutdown = TimerType::from_str("System Shutdown");
+    let shutdown = TimerType::from_str("System Shutdown").expect("Failed to parse System Shutdown");
     assert!(matches!(shutdown, TimerType::Shutdown));
     assert_eq!(shutdown.as_str(), "System Shutdown");
 
     // Test custom type
-    let custom = TimerType::from_str("My Custom Timer");
+    let custom = TimerType::from_str("My Custom Timer").expect("Failed to parse custom timer");
     match &custom {
         TimerType::UserDefined(name) => assert_eq!(name, "My Custom Timer"),
         _ => panic!("Expected UserDefined variant"),

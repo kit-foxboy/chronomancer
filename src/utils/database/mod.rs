@@ -1,5 +1,5 @@
+pub mod repository;
 pub mod sqlite;
-pub mod respository;
 
+pub use repository::Repository;
 pub use sqlite::SQLiteDatabase;
-pub use respository::Repository;

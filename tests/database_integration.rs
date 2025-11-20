@@ -12,7 +12,7 @@
 // Key concept: Integration tests should use an isolated database (in-memory
 // or temporary file) so they don't pollute your actual app data.
 
-use chronomancer::utils::database::respository::Repository;
+use chronomancer::utils::database::repository::Repository;
 use chronomancer::utils::database::sqlite::SQLiteDatabase;
 use chronomancer::{Timer, TimerType};
 

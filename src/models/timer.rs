@@ -1,4 +1,6 @@
-use crate::utils::database::respository::Repository;
+use std::str::FromStr;
+
+use crate::utils::database::repository::Repository;
 use anyhow::{Result, anyhow};
 use sqlx::{FromRow, sqlite::SqlitePool};
 
@@ -28,13 +30,17 @@ impl TimerType {
             TimerType::Shutdown => "System Shutdown",
         }
     }
+}
 
-    pub fn from_str(s: &str) -> Self {
+impl FromStr for TimerType {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self> {
         match s {
-            "System Suspend" => TimerType::Suspend,
-            "System Logout" => TimerType::Logout,
-            "System Shutdown" => TimerType::Shutdown,
-            other => TimerType::UserDefined(other.to_string()),
+            "System Suspend" => Ok(TimerType::Suspend),
+            "System Logout" => Ok(TimerType::Logout),
+            "System Shutdown" => Ok(TimerType::Shutdown),
+            other => Ok(TimerType::UserDefined(other.into())),
         }
     }
 }
