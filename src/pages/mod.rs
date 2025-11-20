@@ -1,9 +1,5 @@
-use cosmic::{
-    Element,
-    Action,
-    Task,
-};
 use crate::utils::messages::{AppMessage, PageMessage};
+use cosmic::{Action, Element, Task};
 
 pub mod power_controls;
 pub use power_controls::PowerControls;
