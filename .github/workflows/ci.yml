@@ -1,14 +1,4 @@
-name: Chronomancer CI
-
-on:
-  push:
-    branches: [main, develop]
-  pull_request:
-    branches: [main, develop]
-
-permissions:
-  contents: read
-
+on: [push, pull_request]
 jobs:
   lint:
     name: Format & Clippy (pedantic)
@@ -20,10 +10,12 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-          components: clippy, rustfmt
+          profile: minimal
+          components: rustfmt, clippy
+          override: true
 
       - name: Cache cargo
         uses: actions/cache@v4
