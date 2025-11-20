@@ -8,9 +8,9 @@ An applet for managing system timers. Reminders, countdowns, sleep timer overrid
 - [x] Persistent storage of timers
 - [x] Notifications on timer completion
 - [x] Sleep timer override functionality
-- [ ] Power management at set times (suspend, hibernate, shutdown, logout)
+- [x] Power management at set times (suspend, hibernate, shutdown, logout)
 - [ ] Recurring timers
-- [ ] Reminders with custom messages
+- [x] Reminders with custom messages
 - [ ] Script execution on timer completion (definitely a version 0.2 feature due to security implications)
 - [ ] Systemd service integration vs using a live channel from the applet
 - [ ] Localization support

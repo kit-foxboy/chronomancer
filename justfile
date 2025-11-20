@@ -27,6 +27,11 @@ icon-svg-dst := icons-dst / 'scalable' / 'apps' / appid + '.svg'
 custom-icons-src := icons-src / 'scalable' / 'apps'
 custom-icons-dst := icons-dst / 'scalable' / 'apps'
 
+# Flatpak paths
+flatpak-script := 'scripts' / 'build-flatpak.sh'
+flatpak-manifest := 'flatpak' / appid + '.yml'
+cargo-sources := 'flatpak' / 'cargo-sources.json'
+
 # Default recipe which runs `just build-release`
 default: build-release
 
@@ -70,6 +75,51 @@ fmt:
 # Run the application for testing purposes
 run *args:
     env RUST_BACKTRACE=full cargo run --release {{args}}
+
+# Generate cargo-sources.json for Flatpak from Cargo.lock
+flatpak-cargo-sources:
+    #!/usr/bin/env sh
+    set -eu
+    if ! command -v flatpak-cargo-generator >/dev/null 2>&1; then
+        echo "Error: flatpak-cargo-generator not found"
+        echo "Install with: pip install --user flatpak-cargo-generator"
+        echo "Or: pipx install flatpak-cargo-generator"
+        exit 1
+    fi
+    echo "Generating {{cargo-sources}} from Cargo.lock..."
+    flatpak-cargo-generator Cargo.lock -o {{cargo-sources}}
+    echo "Done!"
+
+# Build Flatpak (wrapper around scripts/build-flatpak.sh)
+flatpak-build *args:
+    {{flatpak-script}} {{args}}
+
+# Build Flatpak with clean
+flatpak-build-clean *args:
+    {{flatpak-script}} --clean {{args}}
+
+# Quick test build: clean + generate sources + build + install locally
+flatpak-test *args: flatpak-cargo-sources
+    {{flatpak-script}} --clean --test {{args}}
+
+# Build and install Flatpak
+flatpak-install *args: flatpak-cargo-sources
+    {{flatpak-script}} --install {{args}}
+
+# Build, install, and run Flatpak
+flatpak-run *args: flatpak-cargo-sources
+    {{flatpak-script}} --run {{args}}
+
+# Remove Flatpak build artifacts
+flatpak-clean:
+    rm -rf build-dir .flatpak
+
+# Full Flatpak cleanup (including cargo-sources.json)
+flatpak-clean-all: flatpak-clean
+    rm -f {{cargo-sources}}
+
+# Convenience alias for flatpak-build
+flatpak: flatpak-build
 
 # Installs files
 install:
