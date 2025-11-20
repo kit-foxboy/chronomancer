@@ -1,0 +1,148 @@
+# Flatpak manifest for Chronomancer v0.1.0
+#
+# ============================================================
+# IMPORTANT ACTIONS BEFORE SUBMITTING TO FLATHUB:
+# 1. Tag the repository: git tag -a v0.1.0 -m "v0.1.0" && git push --tags
+# 2. Generate cargo-sources.json:
+#      flatpak-cargo-generator --lockfile Cargo.lock -o cargo-sources.json
+#    (Install with: pip install flatpak-cargo-generator)
+# 3. Download the tagged source archive and compute its sha256:
+#      curl -L -o chronomancer-v0.1.0.tar.gz \
+#        https://github.com/kit-foxboy/chronomancer/archive/refs/tags/v0.1.0.tar.gz
+#      sha256sum chronomancer-v0.1.0.tar.gz
+#    Replace REPLACE_ME_SHA256 below with the actual hash.
+# 4. Ensure app.metainfo.xml has a <releases> section including:
+#      <releases><release version="0.1.0" date="2025-11-20"/></releases>
+#    (Adjust date to the actual release date in YYYY-MM-DD)
+# 5. Fix typos in metadata (e.g. "fonaging" -> "for managing") before tagging.
+#
+# After these steps, include BOTH this manifest and cargo-sources.json
+# in the Flathub submission PR.
+#
+# libcosmic is a git dependency; cargo-sources.json must include its
+# pinned commit to allow an offline cargo build inside Flatpak.
+# ============================================================
+
+id: com.github.kit-foxboy.chronomancer
+runtime: org.freedesktop.Platform
+runtime-version: "23.08"
+sdk: org.freedesktop.Sdk
+# Rust toolchain extension for cargo build
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.rust-stable
+command: chronomancer
+# Use the generic freedesktop runtime. If COSMIC publishes its own
+# platform later, consider migrating.
+
+# Metadata
+rename-desktop-file: com.github.kit-foxboy.chronomancer.desktop
+rename-appdata-file: com.github.kit-foxboy.chronomancer.metainfo.xml
+finish-args:
+  # Display / graphics
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+  - --share=ipc
+  # DBus access for notifications and systemd user timers
+  - --talk-name=org.freedesktop.Notifications
+  - --talk-name=org.freedesktop.systemd1
+  # Allow reading timers & sleep state (may refine later)
+  # Network might not be strictly required; omit unless needed:
+  # - --share=network
+  # Persist data per XDG spec inside /app and exported dirs
+  - --persist=.local/share/com.github.kit-foxboy.chronomancer
+  - --persist=.config/com.github.kit-foxboy.chronomancer
+
+# Build options
+build-options:
+  env:
+    RUSTFLAGS: "-C debuginfo=0 -C opt-level=3"
+    CARGO_PROFILE_RELEASE_LTO: "thin"
+    CARGO_NET_RETRY: "3"
+    # Ensure reproducible builds (can be overridden by Flathub infra)
+    SOURCE_DATE_EPOCH: "1732060800" # Placeholder epoch (2024-11-20); update if needed.
+
+# Cleanup patterns (reduce final size)
+cleanup:
+  - /include
+  - /lib/pkgconfig
+  - /share/man
+  - /share/doc
+  - "*.a"
+  - "*.la"
+
+# Modules:
+# 1. Vendored / generated crate sources (cargo-sources.json)
+# 2. Application source archive (tagged release)
+modules:
+  - name: chronomancer
+    buildsystem: cargo
+    # The cargo buildsystem consumes the main source + cargo-sources.json
+    # to perform an offline build.
+    sources:
+      # Tagged source archive of the application itself
+      - type: archive
+        url: https://github.com/kit-foxboy/chronomancer/archive/refs/tags/v0.1.0.tar.gz
+        sha256: REPLACE_ME_SHA256
+        dest: chronomancer-src
+      # Generated crate sources from flatpak-cargo-generator
+      - type: file
+        path: cargo-sources.json
+
+    # Extra cargo configuration (release build)
+    build-commands:
+      # Ensure Cargo.lock present (should be in the archive)
+      - |
+        if [ ! -f chronomancer-src/Cargo.lock ]; then
+          echo "Cargo.lock missing - aborting"; exit 1;
+        fi
+      # Move into source dir for build
+      - mv chronomancer-src/* .
+      # Perform build (flatpak-cargo-generator sets up vendor crates)
+      - cargo build --release --offline
+      # Install binary
+      - install -Dm0755 target/release/chronomancer /app/bin/chronomancer
+      # Install desktop entry (rename to match app-id)
+      - install -Dm0644 resources/app.desktop \
+        /app/share/applications/com.github.kit-foxboy.chronomancer.desktop
+      # Install appstream metadata (renamed)
+      - install -Dm0644 resources/app.metainfo.xml \
+        /app/share/metainfo/com.github.kit-foxboy.chronomancer.metainfo.xml
+      # Install icons (scalable)
+      - |
+        for icon in resources/icons/hicolor/scalable/apps/*.svg; do
+          base="$(basename "$icon")"
+          # Prefix custom icons for clarity
+          install -Dm0644 "$icon" "/app/share/icons/hicolor/scalable/apps/chronomancer-$base"
+        done
+      # Primary application icon
+      - install -Dm0644 resources/icons/hicolor/scalable/apps/hourglass.svg \
+        /app/share/icons/hicolor/scalable/apps/com.github.kit-foxboy.chronomancer.svg
+      # Update icon cache (optional; Flathub may handle)
+      - mkdir -p /app/share/icons/hicolor
+      - touch /app/share/icons/hicolor/.generated
+
+    # Strip symbols from the binary (optional; already optimized)
+    post-install:
+      - strip /app/bin/chronomancer || true
+# ============================================================
+# MAINTENANCE NOTES
+# ============================================================
+# Updating to a new release:
+# 1. Create new tag (e.g., v0.1.1).
+# 2. Regenerate cargo-sources.json.
+# 3. Update archive URL + sha256.
+# 4. Add a new <release> entry to metainfo XML.
+#
+# Adding permissions:
+# - For future system integrations (e.g., power management),
+#   review if additional DBus names are required.
+#
+# Testing locally:
+#   flatpak-builder --user --install --force-clean build-dir \
+#     chronomancer/flatpak/com.github.kit-foxboy.chronomancer.yml
+#   flatpak run com.github.kit-foxboy.chronomancer
+#
+# If runtime-version 24.08 is available and compatible with libcosmic,
+# you may migrate later for newer dependencies.
+# ============================================================

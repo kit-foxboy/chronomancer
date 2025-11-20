@@ -4,11 +4,29 @@
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>MIT</project_license>
   <name>Chronomancer</name>
-  <summary>An applet fonaging system timers</summary>
+  <summary>An applet for managing system timers</summary>
+  <description>
+    <p>Chronomancer is a simple and elegant applet for managing system timers. It allows users to keep their system awake or set times for suspend, shutdown, and logout.</p>
+    <p>Current Features</p>
+    <ul>
+      <li>Set timers for system actions such as suspend, shutdown, and logout</li>
+      <li>Keep the system awake for a specified duration</li>
+      <li>Intuitive user interface for easy timer management</li>
+    </ul>
+    <p>Upcoming Features:</p>
+    <ul>
+      <li>Create multiple timers with custom names and durations</li>
+      <li>Edit existing timers</li>
+      <li>Delete timers when no longer needed</li>
+      <li>Set up recurring timers (i.e. reminders)</li>
+    </ul>
+    <p>Chronomancer is a useful utility applet for anyone who frequently schedules system actions.</p>
   <icon type="remote" width="64" height="64" scale="1">
     https://github.com/kit-foxboy/chronomancer/raw/main/resources/icons/hicolor/scalable/apps/hourglass.svg
   </icon>
   <url type="vcs-browser">https://github.com/kit-foxboy/chronomancer</url>
+  <url type="homepage">https://github.com/kit-foxboy/chronomancer</url>
+  <url type="bugtracker">https://github.com/kit-foxboy/chronomancer/issues</url>
   <launchable type="desktop-id">com.github.kit-foxboy.chronomancer.desktop</launchable>
   <provides>
     <id>com.github.kit-foxboy.chronomancer</id>
@@ -26,10 +44,23 @@
   </supports>
   <categories>
     <category>COSMIC</category>
+    <category>Applet</category>
+    <category>Utility</category>
   </categories>
-  <keywords>
-    <keyword>COSMIC</keyword>
+   <keywords>
+    <keyword>timer</keyword>
+    <keyword>reminder</keyword>
+    <keyword>countdown</keyword>
+    <keyword>systemd</keyword>
+    <keyword>sleep</keyword>
+    <keyword>cosmic</keyword>
   </keywords>
+   <releases>
+    <release version="0.1.0" date="2025-11-20">
+      <description>
+        <p>Initial Flathub release featuring sleep override controls and instantly scheduling shutdowns, suspends, and logouts.</p>
+      </description>
+    </release>
+  </releases>
   <content_rating type="oars-1.1" />
 </component>
-
