@@ -22,6 +22,7 @@ impl TimeUnit {
     /// Returns the number of whole seconds represented by this time unit.
     ///
     /// Takes `self` by value per Clippy's convention for `to_*` methods on `Copy` types.
+    #[must_use]
     pub fn to_seconds_multiplier(self) -> i32 {
         match self {
             TimeUnit::Seconds => 1,

@@ -16,11 +16,13 @@ pub struct ToggleIconRadio {
 
 impl ToggleIconRadio {
     /// Create a new `ToggleIconRadio` instance
+    #[must_use]
     pub fn new(index: usize, name: &'static str) -> Self {
         Self { index, name }
     }
 
     /// Determine the button style based on its active state.
+    #[must_use]
     #[allow(clippy::unused_self)]
     pub fn button_style(&self, is_active: bool) -> theme::Button {
         if is_active {

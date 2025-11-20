@@ -5,6 +5,7 @@ use std::{fs::File, os::fd::OwnedFd as StdOwnedFd, process::Command};
 use zbus::{Connection, Proxy, zvariant::OwnedFd};
 
 /// Load a system icon using `icon::from_name`
+#[must_use]
 pub fn system_icon<Message: 'static>(name: &str, size: u16) -> Element<'static, Message> {
     widget::icon::from_name(name)
         .size(size)
@@ -22,6 +23,12 @@ pub fn system_icon<Message: 'static>(name: &str, size: u16) -> Element<'static, 
 /// * `who` - Application name (e.g., "Chronomancer")
 /// * `reason` - Reason for inhibiting (e.g., "User requested stay-awake mode")
 /// * `mode` - "block" to block suspend, "delay" to delay it
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - Failed to connect to the system D-Bus
+/// - The D-Bus call to Inhibit fails
 pub async fn acquire_suspend_inhibit(who: &str, reason: &str, mode: &str) -> Result<File> {
     let connection = Connection::system()
         .await
@@ -51,6 +58,12 @@ pub fn release_suspend_inhibit(file: File) {
 }
 
 /// Execute system suspend by calling `systemctl suspend`.
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - Failed to execute the systemctl command
+/// - The systemctl suspend command fails
 pub fn execute_system_suspend() -> Result<()> {
     let status = Command::new("systemctl")
         .arg("suspend")
@@ -67,6 +80,12 @@ pub fn execute_system_suspend() -> Result<()> {
 }
 
 /// Execute system shutdown by calling `systemctl poweroff`.
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - Failed to execute the systemctl command
+/// - The systemctl poweroff command fails
 pub fn execute_system_shutdown() -> Result<()> {
     let status = Command::new("systemctl")
         .arg("poweroff")
@@ -83,6 +102,13 @@ pub fn execute_system_shutdown() -> Result<()> {
 }
 
 /// Execute a system logout by calling `loginctl kill-session $XDG_SESSION_ID`
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The `XDG_SESSION_ID` environment variable is not set
+/// - Failed to execute the loginctl command
+/// - The loginctl kill-session command fails
 pub fn execute_system_logout() -> Result<()> {
     let xdg_session_id =
         std::env::var("XDG_SESSION_ID").context("XDG_SESSION_ID environment variable not set")?;

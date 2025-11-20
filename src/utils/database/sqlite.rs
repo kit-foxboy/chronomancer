@@ -14,6 +14,14 @@ pub struct SQLiteDatabase {
 
 impl SQLiteDatabase {
     /// Create a new `SQLite` database connection pool
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The data directory cannot be determined or created
+    /// - The database path is invalid
+    /// - The database connection fails
+    /// - Database migrations fail
     pub async fn new() -> Result<Self> {
         // Determine the database file path, create if necessary
         let data_dir = dirs::data_local_dir()
@@ -39,6 +47,13 @@ impl SQLiteDatabase {
         Ok(Self { pool })
     }
 
+    /// Create a new in-memory `SQLite` database connection pool (for testing)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The database connection fails
+    /// - Database migrations fail
     #[allow(dead_code)]
     pub async fn new_in_memory() -> Result<Self> {
         // Create connection pool and run migrations
@@ -50,6 +65,7 @@ impl SQLiteDatabase {
         Ok(Self { pool })
     }
 
+    #[must_use]
     pub fn pool(&self) -> &SqlitePool {
         &self.pool
     }

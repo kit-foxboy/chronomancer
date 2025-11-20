@@ -41,6 +41,7 @@ impl<T: RadioComponent> RadioComponents<T> {
     }
 
     /// create a new `RadioComponents` instance
+    #[must_use]
     pub fn new(options: Vec<T>) -> Self {
         Self {
             options,
@@ -49,6 +50,7 @@ impl<T: RadioComponent> RadioComponents<T> {
     }
 
     /// display options in a row layout
+    #[must_use]
     pub fn row(&self, spacing: u16) -> Element<'_, ComponentMessage> {
         let mut row_elements = vec![];
 

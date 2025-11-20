@@ -19,6 +19,7 @@ impl ComponentSize {
 }
 
 /// Get the current COSMIC theme spacing values
+#[must_use]
 pub fn cosmic_spacing() -> Spacing {
     theme::active().cosmic().spacing
 }
@@ -28,11 +29,13 @@ pub struct Gaps;
 
 impl Gaps {
     /// Extra small gap - use for related items within a group
+    #[must_use]
     pub fn xs() -> u16 {
         cosmic_spacing().space_xs
     }
 
     /// Small gap - use for grouping related elements
+    #[must_use]
     pub fn s() -> u16 {
         cosmic_spacing().space_s
     }
@@ -43,12 +46,14 @@ pub struct Padding;
 
 impl Padding {
     /// Standard padding for most components
+    #[must_use]
     pub fn standard() -> [u16; 4] {
         let xs = Gaps::xs();
         [xs, xs, xs, xs]
     }
 
     /// Horizontal padding only
+    #[must_use]
     pub fn horizontal(amount: u16) -> [u16; 4] {
         [0, amount, 0, amount]
     }

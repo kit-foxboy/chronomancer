@@ -22,6 +22,7 @@ pub enum TimerType {
 }
 
 impl TimerType {
+    #[must_use]
     pub fn as_str(&self) -> &str {
         match self {
             TimerType::UserDefined(name) => name,
@@ -46,6 +47,7 @@ impl FromStr for TimerType {
 }
 
 impl Timer {
+    #[must_use]
     pub fn new(duration_seconds: i32, is_recurring: bool, timer_type: &TimerType) -> Self {
         Self {
             id: 0,
@@ -57,6 +59,7 @@ impl Timer {
         }
     }
 
+    #[must_use]
     pub fn is_active(&self) -> bool {
         let now = chrono::Utc::now().timestamp();
         now < self.ends_at
