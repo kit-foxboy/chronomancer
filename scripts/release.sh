@@ -25,7 +25,7 @@
 #   - appstreamcli (recommended; install via your distro)
 #
 # After running, manually:
-#   - Commit changes: git add flatpak/${APP_ID}.yml cargo-sources.json resources/app.metainfo.xml
+#   - Commit changes: git add flatpak/${APP_ID}.yml flatpak/cargo-sources.json resources/app.metainfo.xml
 #   - git commit -m "Release ${VERSION}"
 #   - Test Flatpak build locally before opening Flathub PR.
 #
@@ -34,7 +34,7 @@ set -euo pipefail
 APP_ID="com.vulpineinteractive.chronomancer"
 MANIFEST="flatpak/${APP_ID}.yml"
 CARGO_LOCK="Cargo.lock"
-CARGO_SOURCES="cargo-sources.json"
+CARGO_SOURCES="flatpak/cargo-sources.json"
 
 # A little fanciness goes a long way
 COLOR_RED=$'\033[31m'
@@ -172,6 +172,7 @@ else
     fi
   fi
   info "Generating ${CARGO_SOURCES}"
+  run "mkdir -p flatpak"
   run "flatpak-cargo-generator ${CARGO_LOCK} -o ${CARGO_SOURCES}"
   if [[ "${DRY_RUN:-}" != "1" ]]; then
     [[ -s "${CARGO_SOURCES}" ]] || { err "cargo-sources.json is empty or missing"; exit 1; }
