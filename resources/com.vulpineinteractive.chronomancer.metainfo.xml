@@ -13,7 +13,7 @@
     <p>Current Features</p>
     <ul>
       <li>Set timers for system actions such as suspend, shutdown, and logout</li>
-      <li>Keep the system awake for a specified duration</li>
+      <li>Keep the system awake for a specified duration or infinitely</li>
       <li>Intuitive user interface for easy timer management</li>
     </ul>
     <p>Upcoming Features:</p>
