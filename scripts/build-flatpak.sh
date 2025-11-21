@@ -19,9 +19,14 @@
 set -euo pipefail
 
 APP_ID="com.vulpineinteractive.chronomancer"
-MANIFEST="flatpak/${APP_ID}.yml"
+MANIFEST="${1:-flatpak/${APP_ID}.yml}"
 BUILD_DIR="build-dir"
 REPO_DIR=".flatpak/repo"
+
+# Shift manifest arg if provided
+if [[ $# -gt 0 ]] && [[ ! "$1" =~ ^-- ]]; then
+  shift
+fi
 
 # Colors
 COLOR_RED=$'\033[31m'
@@ -39,7 +44,10 @@ usage() {
   cat <<EOF
 Flatpak Build Script for Chronomancer
 
-Usage: $0 [OPTIONS]
+Usage: $0 [MANIFEST] [OPTIONS]
+
+Arguments:
+  MANIFEST        Path to manifest file (default: flatpak/${APP_ID}.yml)
 
 Options:
   --clean         Remove build directory before building
@@ -50,9 +58,9 @@ Options:
   --help          Show this help message
 
 Examples:
-  $0 --clean --test           # Clean build and test install
-  $0 --install --run          # Build, install, and run
-  $0 --clean                  # Just build (no install)
+  $0 --clean --test                        # Clean build and test install
+  $0 flatpak/custom.yml --install --run    # Use custom manifest
+  $0 --clean                               # Just build (no install)
 
 EOF
 }
@@ -102,13 +110,13 @@ done
 # Check dependencies
 check_deps() {
   local missing=()
-  
+
   for cmd in flatpak flatpak-builder; do
     if ! command -v "$cmd" >/dev/null 2>&1; then
       missing+=("$cmd")
     fi
   done
-  
+
   if [[ ${#missing[@]} -gt 0 ]]; then
     err "Missing required commands: ${missing[*]}"
     err "Install with: sudo pacman -S flatpak flatpak-builder"
@@ -122,18 +130,18 @@ validate_files() {
     err "Manifest not found: $MANIFEST"
     exit 1
   fi
-  
+
   if [[ ! -f "Cargo.toml" ]]; then
     err "Cargo.toml not found. Are you in the project root?"
     exit 1
   fi
-  
+
   if [[ ! -f "flatpak/cargo-sources.json" ]]; then
     warn "cargo-sources.json not found. You may need to run:"
     warn "  flatpak-cargo-generator Cargo.lock -o flatpak/cargo-sources.json"
     warn ""
     warn "Attempting to generate it now..."
-    
+
     if command -v flatpak-cargo-generator >/dev/null 2>&1; then
       flatpak-cargo-generator Cargo.lock -o flatpak/cargo-sources.json
       info "Generated cargo-sources.json"
@@ -160,20 +168,20 @@ build_flatpak() {
   log "Manifest: $MANIFEST"
   log "Build dir: $BUILD_DIR"
   log "Repo: $REPO_DIR"
-  
+
   local build_args=(
     "--repo=$REPO_DIR"
     "--force-clean"
   )
-  
+
   if [[ $DO_TEST -eq 1 ]]; then
     build_args+=("--user")
     info "Test mode: Building for local user"
   fi
-  
+
   # Create repo directory if it doesn't exist
   mkdir -p "$REPO_DIR"
-  
+
   # Run flatpak-builder
   info "Running flatpak-builder..."
   if flatpak-builder "${build_args[@]}" "$BUILD_DIR" "$MANIFEST"; then
@@ -187,19 +195,30 @@ build_flatpak() {
 # Install Flatpak
 install_flatpak() {
   log "Installing Flatpak..."
-  
+
+  local repo_name="chronomancer-local"
+
+  # Add or update local repo as a remote
+  if flatpak remote-list --user | grep -q "^${repo_name}"; then
+    info "Updating existing remote '${repo_name}'..."
+    flatpak remote-modify --user "${repo_name}" --url="file://$(realpath ${REPO_DIR})" || true
+  else
+    info "Adding local repo as remote '${repo_name}'..."
+    flatpak remote-add --user --no-gpg-verify "${repo_name}" "file://$(realpath ${REPO_DIR})"
+  fi
+
   local install_args=(
     "install"
     "--user"
     "--assumeyes"
   )
-  
+
   if [[ $DO_TEST -eq 1 ]]; then
     install_args+=("--reinstall")
   fi
-  
-  install_args+=("$REPO_DIR" "$APP_ID")
-  
+
+  install_args+=("${repo_name}" "$APP_ID")
+
   if flatpak "${install_args[@]}"; then
     info "Installation successful!"
   else
@@ -218,27 +237,27 @@ run_flatpak() {
 main() {
   log "Chronomancer Flatpak Builder"
   echo
-  
+
   check_deps
   validate_files
-  
+
   if [[ $DO_CLEAN -eq 1 ]]; then
     clean_build
   fi
-  
+
   build_flatpak
-  
+
   if [[ $DO_INSTALL -eq 1 ]]; then
     install_flatpak
   fi
-  
+
   if [[ $DO_RUN -eq 1 ]]; then
     run_flatpak
   fi
-  
+
   echo
   info "All done!"
-  
+
   if [[ $DO_INSTALL -eq 0 ]]; then
     echo
     info "To install, run:"

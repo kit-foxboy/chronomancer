@@ -5,6 +5,9 @@
   <project_license>MIT</project_license>
   <name>Chronomancer</name>
   <summary>Applet for managing timers, reminders, and sleep overrides</summary>
+  <developer id="com.vulpineinteractive">
+    <name>Vulpine Interactive</name>
+  </developer>
   <description>
     <p>Chronomancer is a simple and elegant applet for managing system timers. It allows users to keep their system awake or set times for suspend, shutdown, and logout.</p>
     <p>Current Features</p>
@@ -37,10 +40,7 @@
   <url type="bugtracker">https://github.com/kit-foxboy/chronomancer/issues</url>
   <launchable type="desktop-id">com.vulpineinteractive.chronomancer.desktop</launchable>
   <provides>
-    <id>com.vulpineinteractive.chronomancer</id>
-    <binaries>
-      <binary>chronomancer</binary>
-    </binaries>
+    <binary>chronomancer</binary>
   </provides>
   <requires>
     <display_length compare="ge">360</display_length>
@@ -51,8 +51,6 @@
     <control>touch</control>
   </supports>
   <categories>
-    <category>COSMIC</category>
-    <category>Applet</category>
     <category>Utility</category>
   </categories>
    <keywords>
@@ -64,7 +62,7 @@
     <keyword>cosmic</keyword>
   </keywords>
    <releases>
-    <release version="0.1.0" date="2025-11-20">
+    <release version="0.1.0" date="2024-11-20">
       <description>
         <p>Initial Flathub release featuring sleep override controls and instantly scheduling shutdowns, suspends, and logouts.</p>
       </description>

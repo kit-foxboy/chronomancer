@@ -7,14 +7,20 @@ sdk-extensions:
 command: chronomancer
 
 finish-args:
+  # Environment variables for icon theme access
+  # THESE TINY DETAILS ARE KILLING ME
+  - --env=XDG_DATA_DIRS=/app/share:/usr/share:/run/host/share
   - --socket=wayland
   - --socket=fallback-x11
   - --device=dri
   - --share=ipc
   - --talk-name=org.freedesktop.Notifications
-  - --talk-name=org.freedesktop.systemd1
+  - --system-talk-name=org.freedesktop.login1
   - --persist=.local/share/com.vulpineinteractive.chronomancer
   - --persist=.config/com.vulpineinteractive.chronomancer
+  # Icon theme access (read-only access to host system icons)
+  - --filesystem=xdg-data/icons:ro
+  - --filesystem=~/.icons:ro
 
 cleanup:
   - /include
@@ -36,20 +42,19 @@ modules:
       - cargo --offline fetch --manifest-path Cargo.toml --verbose
       - cargo build --offline --release --verbose
       - install -Dm0755 target/release/chronomancer ${FLATPAK_DEST}/bin/chronomancer
-      - install -Dm0644 resources/app.desktop ${FLATPAK_DEST}/share/applications/${FLATPAK_ID}.desktop
-      - install -Dm0644 resources/app.metainfo.xml ${FLATPAK_DEST}/share/metainfo/${FLATPAK_ID}.metainfo.xml
+      - install -Dm0644 resources/${FLATPAK_ID}.desktop ${FLATPAK_DEST}/share/applications/${FLATPAK_ID}.desktop
+      - install -Dm0644 resources/${FLATPAK_ID}.metainfo.xml ${FLATPAK_DEST}/share/metainfo/${FLATPAK_ID}.metainfo.xml
       - install -Dm0644 resources/icons/hicolor/scalable/apps/hourglass.svg ${FLATPAK_DEST}/share/icons/hicolor/scalable/apps/${FLATPAK_ID}.svg
       - |
         for icon in resources/icons/hicolor/scalable/apps/*.svg; do
           base="$(basename "$icon")"
           if [ "$base" != "hourglass.svg" ]; then
-            install -Dm0644 "$icon" "${FLATPAK_DEST}/share/icons/hicolor/scalable/apps/chronomancer-$base"
+            install -Dm0644 "$icon" "${FLATPAK_DEST}/share/icons/hicolor/scalable/apps/$base"
           fi
         done
     sources:
-      - type: archive
-        url: https://github.com/kit-foxboy/chronomancer/archive/refs/tags/v0.1.0.tar.gz
-        sha256: d097bacd5258b04e718d0f6d58ddbcd4a5126acfab85dffc5531786503eb57c5
+      - type: dir
+        path: ..
       - cargo-sources.json
       - type: shell
         commands:
