@@ -12,3 +12,12 @@ debian/*
 !debian/install
 !debian/rules
 !debian/source
+
+# Release artifacts
+chronomancer-*.tar.gz
+
+# Flatpak build artifacts
+.flatpak/
+.flatpak-builder/
+build-dir/
+flatpak/cargo-sources.json

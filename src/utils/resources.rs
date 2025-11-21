@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use cosmic::{Element, widget};
-use std::{fs::File, os::fd::OwnedFd as StdOwnedFd, process::Command};
+use std::{fs::File, os::fd::OwnedFd as StdOwnedFd};
 
 use zbus::{Connection, Proxy, zvariant::OwnedFd};
 
@@ -57,73 +57,90 @@ pub fn release_suspend_inhibit(file: File) {
     drop(file);
 }
 
-/// Execute system suspend by calling `systemctl suspend`.
+/// Execute system suspend by calling the login1 D-Bus API.
 ///
 /// # Errors
 ///
 /// Returns an error if:
-/// - Failed to execute the systemctl command
-/// - The systemctl suspend command fails
-pub fn execute_system_suspend() -> Result<()> {
-    let status = Command::new("systemctl")
-        .arg("suspend")
-        .status()
-        .context("Failed to execute systemctl suspend")?;
+/// - Failed to connect to system bus
+/// - The D-Bus call to Suspend fails
+pub async fn execute_system_suspend() -> Result<()> {
+    let connection = Connection::system()
+        .await
+        .context("Failed to connect to system bus")?;
 
-    if status.success() {
-        Ok(())
-    } else {
-        Err(anyhow::anyhow!(
-            "systemctl suspend failed with status: {status}"
-        ))
-    }
+    let proxy = Proxy::new(
+        &connection,
+        "org.freedesktop.login1",
+        "/org/freedesktop/login1",
+        "org.freedesktop.login1.Manager",
+    )
+    .await?;
+
+    let _: () = proxy
+        .call("Suspend", &(true,))
+        .await
+        .context("D-Bus call to Suspend failed")?;
+
+    Ok(())
 }
 
-/// Execute system shutdown by calling `systemctl poweroff`.
+/// Execute system shutdown by calling the login1 D-Bus API.
 ///
 /// # Errors
 ///
 /// Returns an error if:
-/// - Failed to execute the systemctl command
-/// - The systemctl poweroff command fails
-pub fn execute_system_shutdown() -> Result<()> {
-    let status = Command::new("systemctl")
-        .arg("poweroff")
-        .status()
-        .context("Failed to execute systemctl poweroff")?;
+/// - Failed to connect to system bus
+/// - The D-Bus call to `PowerOff` fails
+pub async fn execute_system_shutdown() -> Result<()> {
+    let connection = Connection::system()
+        .await
+        .context("Failed to connect to system bus")?;
 
-    if status.success() {
-        Ok(())
-    } else {
-        Err(anyhow::anyhow!(
-            "systemctl poweroff failed with status: {status}"
-        ))
-    }
+    let proxy = Proxy::new(
+        &connection,
+        "org.freedesktop.login1",
+        "/org/freedesktop/login1",
+        "org.freedesktop.login1.Manager",
+    )
+    .await?;
+
+    let _: () = proxy
+        .call("PowerOff", &(true,))
+        .await
+        .context("D-Bus call to PowerOff failed")?;
+
+    Ok(())
 }
 
-/// Execute a system logout by calling `loginctl kill-session $XDG_SESSION_ID`
+/// Execute a system logout by calling the login1 D-Bus API to terminate the session.
 ///
 /// # Errors
 ///
 /// Returns an error if:
 /// - The `XDG_SESSION_ID` environment variable is not set
-/// - Failed to execute the loginctl command
-/// - The loginctl kill-session command fails
-pub fn execute_system_logout() -> Result<()> {
+/// - Failed to connect to system bus
+/// - The D-Bus call to `TerminateSession` fails
+pub async fn execute_system_logout() -> Result<()> {
     let xdg_session_id =
         std::env::var("XDG_SESSION_ID").context("XDG_SESSION_ID environment variable not set")?;
 
-    let status = Command::new("loginctl")
-        .arg("kill-session")
-        .arg(xdg_session_id)
-        .status()
-        .context("Failed to execute loginctl kill-session")?;
+    let connection = Connection::system()
+        .await
+        .context("Failed to connect to system bus")?;
 
-    if status.success() {
-        Ok(())
-    } else {
-        Err(anyhow::anyhow!(
-            "loginctl kill-session failed with status: {status}"
-        ))
-    }
+    let proxy = Proxy::new(
+        &connection,
+        "org.freedesktop.login1",
+        "/org/freedesktop/login1",
+        "org.freedesktop.login1.Manager",
+    )
+    .await?;
+
+    let _: () = proxy
+        .call("TerminateSession", &(xdg_session_id,))
+        .await
+        .context("D-Bus call to TerminateSession failed")?;
+
+    Ok(())
 }

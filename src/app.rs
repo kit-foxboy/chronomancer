@@ -29,7 +29,7 @@ use crate::{
     },
 };
 
-const APP_ID: &str = "com.github.kit-foxboy.chronomancer";
+const APP_ID: &str = "com.vulpineinteractive.chronomancer";
 // const REPOSITORY: &str = env!("CARGO_PKG_REPOSITORY");
 // const APP_ICON: &[u8] = include_bytes!("../resources/icons/hicolor/scalable/apps/hourglass.svg");
 
@@ -80,7 +80,7 @@ impl Application for AppModel {
         let app = AppModel {
             core,
             // key_binds: HashMap::new(),
-            icon_name: "chronomancer-hourglass".to_string(),
+            icon_name: "com.vulpineinteractive.chronomancer".to_string(),
             // Optional configuration file for an application.
             config: cosmic_config::Config::new(Self::APP_ID, Config::VERSION)
                 .map(|context| match Config::get_entry(&context) {
@@ -377,6 +377,7 @@ impl AppModel {
         Task::none()
     }
 
+    #[allow(clippy::too_many_lines)]
     fn handle_power_message(&mut self, msg: PowerMessage) -> Task<Action<Message>> {
         // let _ = self.power_controls.update(&msg);
         match msg {
@@ -464,20 +465,38 @@ impl AppModel {
                 eprintln!("Database not yet available");
             }
             PowerMessage::ExecuteSuspend => {
-                if let Err(e) = resources::execute_system_suspend() {
-                    eprintln!("Failed to suspend system: {e}");
-                }
+                return Task::perform(
+                    async move { resources::execute_system_suspend().await },
+                    |result| {
+                        if let Err(e) = result {
+                            eprintln!("Failed to suspend system: {e}");
+                        }
+                        Action::None
+                    },
+                );
             }
             PowerMessage::ExecuteShutdown => {
-                if let Err(e) = resources::execute_system_shutdown() {
-                    eprintln!("Failed to shutdown system: {e}");
-                }
+                return Task::perform(
+                    async move { resources::execute_system_shutdown().await },
+                    |result| {
+                        if let Err(e) = result {
+                            eprintln!("Failed to shutdown system: {e}");
+                        }
+                        Action::None
+                    },
+                );
             }
             PowerMessage::ExecuteLogout => {
                 println!("Executing system logout");
-                if let Err(e) = resources::execute_system_logout() {
-                    eprintln!("Failed to logout system: {e}");
-                }
+                return Task::perform(
+                    async move { resources::execute_system_logout().await },
+                    |result| {
+                        if let Err(e) = result {
+                            eprintln!("Failed to logout system: {e}");
+                        }
+                        Action::None
+                    },
+                );
             }
         }
         Task::none()
