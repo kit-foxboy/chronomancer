@@ -91,7 +91,7 @@ pub async fn execute_system_suspend() -> Result<()> {
 ///
 /// Returns an error if:
 /// - Failed to connect to system bus
-/// - The D-Bus call to PowerOff fails
+/// - The D-Bus call to `PowerOff` fails
 pub async fn execute_system_shutdown() -> Result<()> {
     let connection = Connection::system()
         .await
@@ -120,7 +120,7 @@ pub async fn execute_system_shutdown() -> Result<()> {
 /// Returns an error if:
 /// - The `XDG_SESSION_ID` environment variable is not set
 /// - Failed to connect to system bus
-/// - The D-Bus call to TerminateSession fails
+/// - The D-Bus call to `TerminateSession` fails
 pub async fn execute_system_logout() -> Result<()> {
     let xdg_session_id =
         std::env::var("XDG_SESSION_ID").context("XDG_SESSION_ID environment variable not set")?;

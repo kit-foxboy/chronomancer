@@ -377,6 +377,7 @@ impl AppModel {
         Task::none()
     }
 
+    #[allow(clippy::too_many_lines)]
     fn handle_power_message(&mut self, msg: PowerMessage) -> Task<Action<Message>> {
         // let _ = self.power_controls.update(&msg);
         match msg {
