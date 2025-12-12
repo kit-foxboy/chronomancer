@@ -6,6 +6,10 @@ license = "MIT"
 description = "An applet fonaging system timers"
 repository = "https://github.com/kit-foxboy/chronomancer"
 
+[[bin]]
+name = "chronomancer"
+path = "src/main.rs"
+
 [dependencies]
 anyhow = "1.0.100"
 chrono = "0.4.42"

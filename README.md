@@ -1,6 +1,6 @@
 # Chronomancer
 
-A COSMIC panel applet for comprehensive time management. Set countdown timers, schedule power management actions, and manage your system's sleep behavior—all from your system panel.
+A COSMIC panel applet for comprehensive time management. Set countdown timers, schedule power management actions, and manage your system's sleep behavior—all from your system panel. It uses system bus to place inhibitors on suspend and ensure that the system uses the lightweight app timer to perform the desired operation. It has a sqlite database backend to eventually support recurring timers and such between reboots. Adding scripting support and/or systemd units is also in the works.
 
 ![Chronomancer power controls interface showing sleep timer override options](./resources/screenshots/main-screenshot.png)
 
@@ -10,11 +10,11 @@ A COSMIC panel applet for comprehensive time management. Set countdown timers, s
 
 #### Flathub (Recommended - Coming Soon)
 
-> **Note:** Chronomancer's submission to Flathub is currently pending review. Once approved, you'll be able to install it directly from the COSMIC Store or via Flatpak. Check back soon!
+> **Note:** Chronomancer's submission to the cosmic flatpak repo is currently pending review. Once approved, you'll be able to install it directly from the COSMIC Store.
 
 #### Building from Source
 
-If you'd like to try Chronomancer before the Flathub release, you can build and install it from source. A [justfile](./justfile) is included for the [casey/just][just] command runner:
+If you'd like to try Chronomancer before the flatpak release, you can build and install it from source. A [justfile](./justfile) is included for the [casey/just][just] command runner:
 
 ```sh
 # Build and install system-wide (requires sudo)
@@ -77,6 +77,7 @@ This project includes comprehensive documentation for developers in the `.github
 
 - **Copilot Instructions:** `.github/copilot-instructions.md` - Project overview, architecture, and patterns
 - **Architectural Idioms:** `.github/architectural-idioms.md` - Component-to-page message flow patterns
+- **Flatpak Building:** `.github/FLATPAK_BUILDING.md` - Guide to building with Flathub-preferred builder
 - **UI Spacing Guide:** `.github/UI_SPACING_GUIDE.md`
 - **Iterator Patterns:** `.github/iterator-patterns.md`
 - **Icon Theming Notes:** `.github/icon-theming-notes.md`

@@ -19,5 +19,9 @@ chronomancer-*.tar.gz
 # Flatpak build artifacts
 .flatpak/
 .flatpak-builder/
+.flatpak-state/
 build-dir/
-flatpak/cargo-sources.json
+builddir/
+.io.vulpapps.Chronomancer.yml
+
+# Note: flatpak/cargo-sources.json is tracked in git (needed by both manifests)
