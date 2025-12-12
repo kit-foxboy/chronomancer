@@ -21,7 +21,7 @@ impl Default for PowerControls {
     fn default() -> Self {
         Self {
             power_buttons: RadioComponents::new(vec![
-                ToggleIconRadio::new(0, "com.vulpineinteractive.chronomancer-stay-awake"),
+                ToggleIconRadio::new(0, "io.vulpapps.Chronomancer-stay-awake"),
                 ToggleIconRadio::new(1, "system-suspend-symbolic"),
                 ToggleIconRadio::new(2, "system-shutdown-symbolic"),
                 ToggleIconRadio::new(3, "system-log-out-symbolic"),

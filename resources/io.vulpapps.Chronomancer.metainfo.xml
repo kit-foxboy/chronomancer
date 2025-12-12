@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>com.vulpineinteractive.chronomancer</id>
+  <id>io.vulpapps.Chronomancer</id>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>MIT</project_license>
   <name>Chronomancer</name>
   <summary>Applet for managing timers, reminders, and sleep overrides</summary>
-  <developer id="com.vulpineinteractive">
-    <name>Vulpine Interactive</name>
+  <developer id="io.vulpapps">
+    <name>Vulpine Apps</name>
   </developer>
   <description>
     <p>Chronomancer is a simple and elegant applet for managing system timers. It allows users to keep their system awake or set times for suspend, shutdown, and logout.</p>
@@ -31,20 +31,17 @@
       <caption>Chronomancer main popup showing power override controls</caption>
     </screenshot>
     <screenshot>
-      <image>https://github.com/kit-foxboy/chronomancer/raw/main/resources/screenshots/stay-awake-0.1.0-reminder.png</image>
+      <image>https://github.com/kit-foxboy/chronomancer/raw/main/resources/screenshots/stay-awake-0.1.0.png</image>
       <caption>Stay awake button in action, showing the status in your panel or dock</caption>
     </screenshot>
   </screenshots>
   <url type="vcs-browser">https://github.com/kit-foxboy/chronomancer</url>
   <url type="homepage">https://github.com/kit-foxboy/chronomancer</url>
   <url type="bugtracker">https://github.com/kit-foxboy/chronomancer/issues</url>
-  <launchable type="desktop-id">com.vulpineinteractive.chronomancer.desktop</launchable>
+  <launchable type="desktop-id">io.vulpapps.Chronomancer.desktop</launchable>
   <provides>
     <binary>chronomancer</binary>
   </provides>
-  <requires>
-    <display_length compare="ge">360</display_length>
-  </requires>
   <supports>
     <control>keyboard</control>
     <control>pointing</control>

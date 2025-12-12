@@ -29,7 +29,7 @@ use crate::{
     },
 };
 
-const APP_ID: &str = "com.vulpineinteractive.chronomancer";
+const APP_ID: &str = "io.vulpapps.Chronomancer";
 // const REPOSITORY: &str = env!("CARGO_PKG_REPOSITORY");
 // const APP_ICON: &[u8] = include_bytes!("../resources/icons/hicolor/scalable/apps/hourglass.svg");
 
@@ -80,7 +80,7 @@ impl Application for AppModel {
         let app = AppModel {
             core,
             // key_binds: HashMap::new(),
-            icon_name: "com.vulpineinteractive.chronomancer".to_string(),
+            icon_name: "io.vulpapps.Chronomancer".to_string(),
             // Optional configuration file for an application.
             config: cosmic_config::Config::new(Self::APP_ID, Config::VERSION)
                 .map(|context| match Config::get_entry(&context) {

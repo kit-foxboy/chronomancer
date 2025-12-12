@@ -2,13 +2,13 @@
 Name=Chronomancer
 Comment=An applet for creating and managing system timers
 Type=Application
-Icon=com.vulpineinteractive.chronomancer
+Icon=io.vulpapps.Chronomancer
 Exec=chronomancer %F
 Terminal=false
 StartupNotify=true
-Categories=COSMIC
-Keywords=COSMIC;Iced
+Categories=Utility;
+Keywords=Timer;Reminder;Countdown;Systemd;Sleep;COSMIC;
 MimeType=
-NoDisplay=true
+NoDisplay=false
 X-CosmicApplet=true
 X-CosmicHoverPopup=Auto

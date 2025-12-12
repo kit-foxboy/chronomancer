@@ -350,7 +350,8 @@ This project is a **learning exercise**. When assisting:
 
 ### Project Documentation
 - **Architectural Idioms:** `.github/architectural-idioms.md` - Component-to-page message flow and other patterns
-- **UI Spacing Guide:** `.github/UI_SPACING_GUIDE.md`
+- **Flatpak Notes:** `.github/flatpak.md` - Future Flatpak support plans (v2)
+- **UI Spacing Guide:** `.github/ui-spacing-guide.md`
 - **Iterator Patterns:** `.github/iterator-patterns.md`
 - **Icon Theming Notes:** `.github/icon-theming-notes.md`
 - **Macro Explanations:** `.github/macro-explanations.md`
@@ -366,21 +367,29 @@ This project is a **learning exercise**. When assisting:
 ## Build & Run
 
 ```bash
-# Build debug version
-just build
-
 # Build release version
 just
 
-# Run the applet
+# Run the application
 just run
 
 # Check for errors
 just check
 
+# Format code
+just fmt
+
 # Install system-wide
-just install
+sudo just install
 ```
+
+### Flatpak Support
+
+Flatpak manifests exist in `flatpak/` but are **not fully supported in v1**. These are for future COSMIC Flatpak repository submission.
+
+For v1, use standard installation methods above.
+
+**See `.github/flatpak.md` for future Flatpak plans.**
 
 ## Testing
 
@@ -391,9 +400,9 @@ just install
 ## Data Storage
 
 Follow XDG Base Directory specification:
-- **Config:** `~/.config/com.vulpineinteractive.chronomancer/`
-- **Data:** `~/.local/share/com.vulpineinteractive.chronomancer/`
-- **Database:** `~/.local/share/com.vulpineinteractive.chronomancer/chronomancer.db`
+- **Config:** `~/.config/io.vulpapps.Chronomancer/`
+- **Data:** `~/.local/share/io.vulpapps.Chronomancer/`
+- **Database:** `~/.local/share/io.vulpapps.Chronomancer/chronomancer.db`
 
 
 ## License
