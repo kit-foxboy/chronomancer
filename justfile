@@ -28,10 +28,9 @@ install:
     install -Dm644 resources/{{ appid }}.desktop /usr/share/applications/{{ appid }}.desktop
     install -Dm644 resources/{{ appid }}.metainfo.xml /usr/share/metainfo/{{ appid }}.metainfo.xml
     install -Dm644 resources/icons/hicolor/scalable/apps/hourglass.svg /usr/share/icons/hicolor/scalable/apps/{{ appid }}.svg
-    for icon in resources/icons/hicolor/scalable/apps/{{ appid }}-*.svg; do \
-        [ -f "$$icon" ] && install -Dm644 "$$icon" /usr/share/icons/hicolor/scalable/apps/$$(basename "$$icon"); \
-    done
+    install -Dm644 resources/icons/hicolor/scalable/apps/{{ appid }}-eye.svg /usr/share/icons/hicolor/scalable/apps/{{ appid }}-eye.svg
+    install -Dm644 resources/icons/hicolor/scalable/apps/{{ appid }}-stay-awake.svg /usr/share/icons/hicolor/scalable/apps/{{ appid }}-stay-awake.svg
 
 # Generate cargo-sources.json for Flatpak
 flatpak-sources:
-    python3 flatpak-cargo-generator Cargo.lock -o flatpak/cargo-sources.json
+    flatpak-cargo-generator Cargo.lock -o flatpak/cargo-sources.json
