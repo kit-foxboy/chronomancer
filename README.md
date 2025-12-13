@@ -2,17 +2,17 @@
 
 A COSMIC panel applet for comprehensive time management. Set countdown timers, schedule power management actions, and manage your system's sleep behavior—all from your system panel. It uses system bus to place inhibitors on suspend and ensure that the system uses the lightweight app timer to perform the desired operation. It has a sqlite database backend to eventually support recurring timers and such between reboots. Adding scripting support and/or systemd units is also in the works.
 
-![Chronomancer power controls interface showing sleep timer override options](./resources/screenshots/main-screenshot.png)
+![Chronomancer power controls interface showing sleep timer override options](resources/screenshots/chronomancer-0.1.0-main.png)
 
 ## For Users
 
 ### Installation
 
-#### Flathub (Recommended - Coming Soon)
+#### Cosmic Store? (Coming Soon)
 
 > **Note:** Chronomancer's submission to the cosmic flatpak repo is currently pending review. Once approved, you'll be able to install it directly from the COSMIC Store.
 
-#### Building from Source
+#### For Now: Building from Source
 
 If you'd like to try Chronomancer before the flatpak release, you can build and install it from source. A [justfile](./justfile) is included for the [casey/just][just] command runner:
 
@@ -65,11 +65,11 @@ The included [justfile](./justfile) provides several useful commands:
 
 - `just` - builds the application with the default `just build-release` recipe
 - `just run` - builds and runs the application
-- `just install` - installs the project into the system
-- `just vendor` - creates a vendored tarball
-- `just build-vendored` - compiles with vendored dependencies from that tarball
+- `just default` - build release version
+- `just fmt` - format the application code
+- `just install` - installs the project into the system (requires root outside of flatpak)
 - `just check` - runs clippy on the project to check for linter warnings
-- `just check-json` - can be used by IDEs that support LSP
+- `just flatpak-sources` - generate cargo-sources.json in the flatpak folder for flatpak distribution
 
 ### Project Documentation
 
@@ -95,19 +95,9 @@ Suggestions for better design patterns and architecture are especially appreciat
 
 [Fluent][fluent] is used for localization of the software. Fluent's translation files are found in the [i18n directory](./i18n). New translations may copy the [English (en) localization](./i18n/en) of the project, rename `en` to the desired [ISO 639-1 language code][iso-codes], and then translations can be provided for each [message identifier][fluent-guide]. If no translation is necessary, the message may be omitted.
 
-## For Packagers
-
-If packaging for a Linux distribution, vendor dependencies locally with the `vendor` rule, and build with the vendored sources using the `build-vendored` rule. When installing files, use the `rootdir` and `prefix` variables to change installation paths.
-
-```sh
-just vendor
-just build-vendored
-just rootdir=debian/chronomancer prefix=/usr install
-```
-
-It is recommended to build a source tarball with the vendored dependencies, which can typically be done by running `just vendor` on the host system before it enters the build environment.
-
 ## Contact & Support
+My health is poor and I'm not always available, but I'm always happy to do my best. My preferred communicaiton platform is Discord but you can email me if that's your thing.
+
 
 ### Get in Touch
 
