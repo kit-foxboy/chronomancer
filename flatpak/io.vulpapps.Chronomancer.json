@@ -1,0 +1,61 @@
+{
+  "id": "io.vulpapps.Chronomancer",
+  "runtime": "org.freedesktop.Platform",
+  "runtime-version": "24.08",
+  "sdk": "org.freedesktop.Sdk",
+  "sdk-extensions": [
+    "org.freedesktop.Sdk.Extension.rust-stable"
+  ],
+  "command": "chronomancer",
+  "finish-args": [
+    "--socket=wayland",
+    "--socket=fallback-x11",
+    "--device=dri",
+    "--share=ipc",
+    "--talk-name=org.freedesktop.Notifications",
+    "--system-talk-name=org.freedesktop.login1",
+    "--filesystem=xdg-config/cosmic:rw",
+    "--talk-name=com.system76.CosmicSettingsDaemon",
+    "--persist=.local/share/io.vulpapps.Chronomancer",
+    "--persist=.config/io.vulpapps.Chronomancer"
+  ],
+  "cleanup": [
+    "/include",
+    "/lib/pkgconfig",
+    "/share/man",
+    "/share/doc",
+    "*.a",
+    "*.la"
+  ],
+  "modules": [
+    {
+      "name": "chronomancer",
+      "buildsystem": "simple",
+      "build-options": {
+        "append-path": "/usr/lib/sdk/rust-stable/bin",
+        "env": {
+          "CARGO_HOME": "/run/build/chronomancer/cargo",
+          "CARGO_NET_OFFLINE": "true"
+        }
+      },
+      "build-commands": [
+        "cargo --offline fetch --manifest-path Cargo.toml --verbose",
+        "cargo --offline build --release --verbose",
+        "install -Dm0755 ./target/release/chronomancer /app/bin/chronomancer",
+        "install -Dm0644 ./resources/io.vulpapps.Chronomancer.desktop /app/share/applications/io.vulpapps.Chronomancer.desktop",
+        "install -Dm0644 ./resources/io.vulpapps.Chronomancer.metainfo.xml /app/share/metainfo/io.vulpapps.Chronomancer.metainfo.xml",
+        "install -Dm0644 ./resources/icons/hicolor/scalable/apps/hourglass.svg /app/share/icons/hicolor/scalable/apps/io.vulpapps.Chronomancer.svg",
+        "for icon in ./resources/icons/hicolor/scalable/apps/*.svg; do name=\"$(basename \"$icon\")\"; if [ \"$name\" != \"hourglass.svg\" ]; then install -Dm0644 \"$icon\" \"/app/share/icons/hicolor/scalable/apps/$name\"; fi; done",
+        "install -Dm0644 LICENSE /app/share/licenses/io.vulpapps.Chronomancer/LICENSE"
+      ],
+      "sources": [
+        {
+          "type": "git",
+          "url": "https://github.com/kit-foxboy/chronomancer.git",
+          "commit": "9b92cc8c0115d66033c2baf2eec48d08a0f350e5"
+        },
+        "cargo-sources.json"
+      ]
+    }
+  ]
+}

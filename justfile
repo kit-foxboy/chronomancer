@@ -31,6 +31,15 @@ install:
     install -Dm644 resources/icons/hicolor/scalable/apps/{{ appid }}-eye.svg /usr/share/icons/hicolor/scalable/apps/{{ appid }}-eye.svg
     install -Dm644 resources/icons/hicolor/scalable/apps/{{ appid }}-stay-awake.svg /usr/share/icons/hicolor/scalable/apps/{{ appid }}-stay-awake.svg
 
+# Uninstall from system (requires root)
+uninstall:
+    rm -f /usr/bin/chronomancer
+    rm -f /usr/share/applications/{{ appid }}.desktop
+    rm -f /usr/share/metainfo/{{ appid }}.metainfo.xml
+    rm -f /usr/share/icons/hicolor/scalable/apps/{{ appid }}.svg
+    rm -f /usr/share/icons/hicolor/scalable/apps/{{ appid }}-eye.svg
+    rm -f /usr/share/icons/hicolor/scalable/apps/{{ appid }}-stay-awake.svg
+
 # Generate cargo-sources.json for Flatpak
 flatpak-sources:
     flatpak-cargo-generator Cargo.lock -o flatpak/cargo-sources.json
