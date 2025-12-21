@@ -6,7 +6,7 @@
   <name>Chronomancer</name>
   <summary>Applet for managing timers, reminders, and sleep overrides</summary>
   <developer id="io.vulpapps">
-    <name>Vulpine Apps</name>
+    <name>Vulpine Interactive</name>
   </developer>
   <description>
     <p>Chronomancer is a simple and elegant applet for managing system timers. It allows users to keep their system awake or set times for suspend, shutdown, and logout.</p>
