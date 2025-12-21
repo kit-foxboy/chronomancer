@@ -1,123 +1,285 @@
 # Architectural Idioms for Chronomancer
 
-This document outlines key architectural patterns and idioms used throughout the Chronomancer codebase. These patterns maintain consistency, reduce boilerplate, and make the message flow predictable. This is made up on the fly as we identify recurring patterns. Cosmic doesn't have strong opinions on architecture, so we define our own idioms here. Some of these patterns are well defined in web frameworks (my background), and others are more specific to Rust and Cosmic's MVU needs. I disliked how global application messages were handled in previous projects as a large app could have dozens of messages, so I devised a cleaner pattern here... in theory...
+This document outlines key architectural patterns and idioms used throughout the Chronomancer codebase. These patterns maintain consistency, reduce boilerplate, and make the message flow predictable. This is made up on the fly as we identify recurring patterns. Cosmic doesn't have strong opinions on architecture, so we define our own idioms here. Some of these patterns are well defined in web frameworks (my background), and others are more specific to Rust and Cosmic's MVU needs.
 
 ---
 
-## Component-to-Page Message Flow
+## Module-Based Message Pattern (libcosmic Style)
 
 ### The Problem
 
-In a layered MVU (Model-View-Update) architecture with Components → Pages → App, we need a clean way for components to emit page-level messages without tightly coupling them to the app's message types or dealing with complex type conversions.
+In a layered MVU (Model-View-Update) architecture with Components → Pages → App, we need a clean way to organize messages and handle message flow without creating a single massive message enum or tightly coupling modules.
 
-### The Solution: Optional Return with Recursive Update
+### The Solution: Self-Contained Module Messages
 
-Components return `Option<PageMessage>` instead of `Task<Action<PageMessage>>`. Pages check the return value and recursively call their own `update` method if a message was emitted.
+Following the libcosmic pattern (see [libcosmic book - Modules](https://pop-os.github.io/libcosmic-book/modules.html)), each page and component module defines its own `Message` enum. The app-level message enum uses enum composition to wrap page-specific messages, and `From` implementations handle conversions.
 
 ### Pattern Structure
 
-#### Component Trait
-```rust
-pub trait Component {
-    fn view(&self) -> Element<'_, ComponentMessage>;
-    fn update(&mut self, message: ComponentMessage) -> Option<PageMessage>;
-}
-```
+#### Page Module Structure
 
-#### Component Implementation
+Each page module is self-contained with its own types:
+
 ```rust
-impl Component for PowerForm {
-    fn update(&mut self, message: ComponentMessage) -> Option<PageMessage> {
-        match message {
-            ComponentMessage::TextChanged(new_text) => {
-                self.input_value = new_text;
-                None  // Local state change only
-            }
-            ComponentMessage::SubmitPressed => {
-                if self.validate() {
-                    Some(PageMessage::PowerFormSubmitted(self.get_value()))
-                } else {
-                    None
+// src/pages/power_controls.rs
+pub mod power_controls {
+    #[derive(Debug, Clone)]
+    pub enum Message {
+        // Component interactions
+        RadioOptionSelected(usize),
+        FormTextChanged(String),
+        FormTimeUnitChanged(TimeUnit),
+        FormSubmitPressed,
+        
+        // Actions to bubble up to app
+        ToggleStayAwake,
+        SetSuspendTime(i32),
+        SetShutdownTime(i32),
+        SetLogoutTime(i32),
+    }
+
+    pub struct Page {
+        power_buttons: RadioComponents<ToggleIconRadio>,
+        power_form: PowerForm,
+    }
+
+    impl Page {
+        pub fn view(&self) -> Element<'_, Message> {
+            // Components accept message constructors
+            self.power_form.view(
+                Message::FormTextChanged,
+                Message::FormTimeUnitChanged,
+                Message::FormSubmitPressed,
+            )
+        }
+
+        pub fn update(&mut self, message: Message) -> Task<Action<Message>> {
+            match message {
+                Message::FormTextChanged(text) => {
+                    self.power_form.handle_text_input(text);
+                    Task::none()
                 }
+                Message::ToggleStayAwake => {
+                    // These bubble up to app level, so just return none
+                    // App will intercept and handle them
+                    Task::none()
+                }
+                // ... handle other messages
             }
-            _ => None,
         }
     }
 }
 ```
 
-#### Page Update Handler
+#### Message-Agnostic Components
+
+Components don't define their own message types. Instead, they accept message constructors as function parameters. This is the best improvement for reusability and I finally get the point and utility of the where clause pattern. It's generics with extra type safety because of lifetimes:
+
 ```rust
-impl Page for PowerControls {
-    fn update(&mut self, message: PageMessage) -> Task<Action<AppMessage>> {
-        match message {
-            PageMessage::ComponentMessage(msg) => {
-                // Check if component emits a page message
-                let page_message = self.power_form.update(msg);
-                if let Some(page_msg) = page_message {
-                    // Recursively handle the page message
-                    self.update(page_msg)
-                } else {
-                    Task::done(Action::None)
-                }
-            }
-            PageMessage::PowerFormSubmitted(value) => {
-                // Convert to AppMessage
-                Task::done(Action::App(AppMessage::PowerMessage(
-                    PowerMessage::SetValue(value)
-                )))
-            }
+pub struct PowerForm {
+    pub input_value: String,
+    pub time_unit: TimeUnit,
+    // ... other fields
+}
+
+impl PowerForm {
+    /// View method accepts message constructors
+    pub fn view<Message>(
+        &self,
+        on_text_input: impl Fn(String) -> Message + 'static,
+        on_time_unit: impl Fn(TimeUnit) -> Message + 'static,
+        on_submit: Message,
+    ) -> Element<'_, Message>
+    where
+        Message: Clone + 'static,
+    {
+        column![
+            TextInput::new(&self.placeholder_text, &self.input_value)
+                .on_input(on_text_input)
+                .on_submit(move |_| on_submit.clone()),
+            ComboBox::new(
+                &self.time_unit_options,
+                &fl!("unit-label"),
+                Some(&self.time_unit),
+                on_time_unit,
+            ),
+            button::text(fl!("set-button-label"))
+                .on_press(on_submit)
+        ]
+        .into()
+    }
+
+    /// Public methods for state manipulation (no messages)
+    pub fn handle_text_input(&mut self, new_text: String) {
+        if let Ok(value) = new_text.parse::<u32>() {
+            self.input_value = value.to_string();
         }
+    }
+}
+```
+
+#### App-Level Message Composition
+
+The app uses enum composition to wrap page messages:
+
+```rust
+// src/app_messages.rs
+#[derive(Debug, Clone)]
+pub enum AppMessage {
+    TogglePopup,
+    UpdateConfig(Config),
+    Tick,
+    
+    // Page messages wrapped
+    PowerControlsMessage(power_controls::Message),
+    
+    // Service-level messages
+    DatabaseMessage(DatabaseMessage),
+    TimerMessage(TimerMessage),
+    PowerMessage(PowerMessage),
+}
+
+// Conversion for convenient .map() usage
+impl From<power_controls::Message> for AppMessage {
+    fn from(msg: power_controls::Message) -> Self {
+        AppMessage::PowerControlsMessage(msg)
+    }
+}
+```
+
+#### App-Level Message Handling
+
+The app intercepts page messages that need app-level handling:
+
+```rust
+// src/app.rs
+impl Application for AppModel {
+    fn update(&mut self, message: AppMessage) -> Task<Action<AppMessage>> {
+        match message {
+            AppMessage::PowerControlsMessage(msg) => {
+                self.handle_power_controls_message(msg)
+            }
+            // ... other messages
+        }
+    }
+}
+
+impl AppModel {
+    fn handle_power_controls_message(
+        &mut self,
+        msg: power_controls::Message,
+    ) -> Task<Action<AppMessage>> {
+        // Intercept messages that need app-level handling
+        match msg {
+            power_controls::Message::ToggleStayAwake => {
+                self.handle_power_message(PowerMessage::ToggleStayAwake)
+            }
+            power_controls::Message::SetSuspendTime(time) => {
+                self.handle_power_message(PowerMessage::SetSuspendTime(time))
+            }
+            // ... other intercepted messages
+            
+            // Pass through to page for local state updates
+            _ => self.power_controls.update(msg).map(|action| match action {
+                Action::App(page_msg) => Action::App(AppMessage::PowerControlsMessage(page_msg)),
+                Action::None => Action::None,
+                Action::Cosmic(cosmic_action) => Action::Cosmic(cosmic_action),
+                Action::DbusActivation(dbus_action) => Action::DbusActivation(dbus_action),
+            }),
+        }
+    }
+}
+```
+
+#### View Mapping
+
+Pages map their view to app-level messages:
+
+```rust
+impl Application for AppModel {
+    fn view(&self) -> Element<AppMessage> {
+        self.power_controls
+            .view()
+            .map(AppMessage::PowerControlsMessage)
     }
 }
 ```
 
 ### Benefits
 
-1. **No Type Conversion Gymnastics**: No need for helper functions to convert `Action<PageMessage>` to `Action<AppMessage>`
-2. **Components Stay Simple**: Components don't need to know about `Task` or `Action` types
-3. **Clear Message Flow**: Easy to trace: Component → (optional) PageMessage → Page → AppMessage
-4. **Self-Documenting**: The `Option<PageMessage>` return type makes it obvious that a component *might* emit a page message
-5. **Natural Recursion**: Pages naturally handle their own messages through the recursive `self.update()` call
+1. **Module Encapsulation**: Each page/component is self-contained with its own message types
+2. **No Global Message Bloat**: App-level messages only contain top-level routing, not every possible UI interaction. This was becoming an obvious problem even in a tiny app like this
+3. **Clear Ownership**: Easy to see which module handles which messages
+4. **Reusable Components**: Components are message-agnostic and work with any message type
+5. **Type Safety**: Compiler ensures message types match at boundaries and lifetimes are respected
+6. **Follows libcosmic Conventions**: Better aligns with recommended patterns from the framework
+
+### Component Design Guidelines
+
+**Message-Agnostic Components** (preferred for reusability):
+- Accept message constructors as `view()` parameters
+- Use trait bounds: `where Message: Clone + 'static`
+- Provide public methods for state manipulation (e.g., `handle_text_input()`)
+- Don't define their own message types
+
+**Example**:
+```rust
+pub fn view<Message>(
+    &self,
+    on_select: impl Fn(usize) -> Message + 'static,
+) -> Element<'_, Message>
+where
+    Message: Clone + 'static,
+{
+    button::text("Click me").on_press(on_select(self.index))
+}
+```
 
 ### When to Use This Pattern
 
-- ✅ Component needs to signal the page that something significant happened (form submitted, selection changed, etc.)
-- ✅ The component's action requires page-level context (e.g., which radio button is selected)
-- ✅ The component should remain reusable across different pages
+- ✅ Building pages with multiple components and interactions
+- ✅ Need clear separation between page-level and app-level concerns
+- ✅ Want reusable components across different pages/apps
+- ✅ Following libcosmic's recommended architecture
 
 ### When NOT to Use This Pattern
 
-- ❌ Component only changes its own internal state → return `None`
-- ❌ Component needs to trigger async operations → consider a different architecture (or emit a PageMessage that the page converts to an async task)
-- ❌ Message needs to go directly to the app without page involvement → this pattern adds an unnecessary layer
+- ❌ Simple single-page app with minimal state → flat message structure is fine
+- ❌ Component is page-specific and will never be reused → can use page messages directly
+- ❌ Prototyping/experimenting → use whatever is fastest to write
 
-### Alternative Patterns Considered
+### Key Differences from Previous Pattern
 
-1. **Components return `Task<Action<PageMessage>>`**
-   - ❌ Requires pages to map actions: `task.map(|a| a.map(|page_msg| AppMessage::from(page_msg)))`
-   - ❌ Components need to know about `Task` and `Action` types
-   - ❌ More verbose and harder to read
+**Old Pattern** (Component trait with `Option<PageMessage>`):
+- Components implemented a `Component` trait
+- Components returned `Option<PageMessage>`
+- Pages handled component messages through recursive `update()` calls
+- Required a global `ComponentMessage` and `PageMessage` enum
 
-2. **Components return `Task<Action<AppMessage>>`**
-   - ❌ Tightly couples components to app-level message types
-   - ❌ Makes components non-reusable across different apps or pages
-   - ❌ Breaks separation of concerns
+**New Pattern** (libcosmic module style):
+- No `Component` trait needed
+- Components are message-agnostic (accept message constructors)
+- Each page has its own `Message` enum
+- App uses enum composition to wrap page messages
+- More aligned with libcosmic conventions
 
-3. **Callback closures passed to components**
-   - ❌ Not idiomatic in cosmic/iced MVU architecture
-   - ❌ Harder to debug message flow
-   - ❌ Requires careful lifetime management
+### Real-World Examples
 
-### Real-World Example
-
-See the `PowerForm` component and `PowerControls` page interaction:
-- `src/components/power_form.rs` - Component implementation
-- `src/pages/power_controls.rs` - Page handling with recursive update
-- `src/components/mod.rs` - `Component` trait definition
+See the following files for reference:
+- `src/pages/power_controls.rs` - Page with self-contained `Message` enum
+- `src/components/power_form.rs` - Message-agnostic component accepting message constructors
+- `src/components/radio_components.rs` - Generic component with message constructor parameters
+- `src/app_messages.rs` - App-level message composition
+- `src/app.rs` - Message interception and routing
 
 ---
 
 ## Future Idioms
 
 As the project grows, document new architectural patterns here. I'm sure a lot will change as I write more applications and get feedback from contributors.
+
+**Potential areas to document**:
+- Async task patterns (database queries, systemd calls, etc.)
+- Service layer patterns (systemd integration, D-Bus communication)
+- State management strategies (when to use app state vs page state)
+- Testing strategies for MVU architecture

@@ -17,14 +17,12 @@ use notify_rust::{Hint, Notification};
 use std::{fs::File, str::FromStr, sync::Arc};
 
 use crate::{
+    app_messages::{AppMessage as Message, DatabaseMessage, PowerMessage, TimerMessage},
     config::Config,
     models::{Timer, timer::TimerType},
-    pages::{Page, PowerControls},
+    pages::{PowerControls, power_controls},
     utils::{
         database::{Repository, SQLiteDatabase},
-        messages::{
-            AppMessage as Message, DatabaseMessage, PageMessage, PowerMessage, TimerMessage,
-        },
         resources,
     },
 };
@@ -122,7 +120,10 @@ impl Application for AppModel {
         if matches!(self.popup, Some(p) if p == id) {
             let Spacing { space_m, .. } = theme::active().cosmic().spacing;
 
-            let power = self.power_controls.view().map(Message::PageMessage);
+            let power = self
+                .power_controls
+                .view()
+                .map(Message::PowerControlsMessage);
             let content = column![power].spacing(space_m);
 
             self.core
@@ -165,7 +166,7 @@ impl Application for AppModel {
                 t.map(|_| Action::<Message>::None)
             }
 
-            Message::PageMessage(msg) => self.handle_page_message(msg),
+            Message::PowerControlsMessage(msg) => self.handle_power_controls_message(msg),
 
             Message::DatabaseMessage(msg) => self.handle_database_message(msg),
 
@@ -316,10 +317,33 @@ impl AppModel {
 
     /// Handle messages from pages
     // Todo: If necessary, expand to route to multiple pages
-    // applets work a little differently than full apps with multiple pages so unsure if this is problem
-    // attempting to define opinionated architecture around pages/components even in applets though
-    fn handle_page_message(&mut self, msg: PageMessage) -> Task<Action<Message>> {
-        self.power_controls.update(msg)
+    // Handle messages from the power controls page
+    fn handle_power_controls_message(
+        &mut self,
+        msg: power_controls::Message,
+    ) -> Task<Action<Message>> {
+        // Check if this is a message that needs to be handled at the app level
+        match msg {
+            power_controls::Message::ToggleStayAwake => {
+                self.handle_power_message(PowerMessage::ToggleStayAwake)
+            }
+            power_controls::Message::SetSuspendTime(time) => {
+                self.handle_power_message(PowerMessage::SetSuspendTime(time))
+            }
+            power_controls::Message::SetShutdownTime(time) => {
+                self.handle_power_message(PowerMessage::SetShutdownTime(time))
+            }
+            power_controls::Message::SetLogoutTime(time) => {
+                self.handle_power_message(PowerMessage::SetLogoutTime(time))
+            }
+            // Let the page handle its own state updates
+            _ => self.power_controls.update(msg).map(|action| match action {
+                Action::App(page_msg) => Action::App(Message::PowerControlsMessage(page_msg)),
+                Action::None => Action::None,
+                Action::Cosmic(cosmic_action) => Action::Cosmic(cosmic_action),
+                Action::DbusActivation(dbus_action) => Action::DbusActivation(dbus_action),
+            }),
+        }
     }
 
     fn handle_database_message(&mut self, msg: DatabaseMessage) -> Task<Action<Message>> {
@@ -534,8 +558,6 @@ impl AppModel {
 
 #[cfg(test)]
 mod tests {
-    use crate::utils::messages::ComponentMessage;
-
     use super::*;
 
     fn get_test_app() -> AppModel {
@@ -545,7 +567,7 @@ mod tests {
     #[test]
     fn test_app_initialization() {
         let app = get_test_app();
-        assert_eq!(app.icon_name, "chronomancer-hourglass");
+        assert_eq!(app.icon_name, "io.vulpapps.Chronomancer");
         assert!(
             app.popup.is_none(),
             "Popup should be None on initialization"
@@ -632,18 +654,18 @@ mod tests {
     }
 
     #[test]
-    fn test_handle_page_message_power_controls() {
+    fn test_handle_power_controls_message() {
         let mut app = get_test_app();
 
-        // Create a sample PageMessage for PowerControls
-        let msg = PageMessage::ComponentMessage(ComponentMessage::SubmitPressed);
+        // Create a sample message for PowerControls form text change
+        let msg = power_controls::Message::FormTextChanged("15".to_string());
 
         // Handle the message
-        let task = app.handle_page_message(msg);
+        let task = app.handle_power_controls_message(msg);
 
-        // Since PowerControls does not handle SubmitPressed, no task should be scheduled.
+        // The message is forwarded to power_controls.update()
         let _ = task.map(|_action| {
-            unreachable!("Uh-oh, spaghettios, SubmitPressed should not produce any action here!");
+            // All good just wanted to test message handling doesn't panic
         });
     }
 
@@ -908,11 +930,11 @@ mod tests {
     }
 
     #[test]
-    fn test_update_page_message() {
+    fn test_update_power_controls_message() {
         let mut app = get_test_app();
 
-        let msg = PageMessage::ComponentMessage(ComponentMessage::SubmitPressed);
-        let _task = app.update(Message::PageMessage(msg));
+        let msg = power_controls::Message::FormTextChanged("20".to_string());
+        let _task = app.update(Message::PowerControlsMessage(msg));
 
         // The message is forwarded to power_controls.update()
         // We can't easily verify internal state without exposing it,

@@ -1,31 +1,19 @@
+// SPDX-License-Identifier: MIT
+
 use std::{fs::File, sync::Arc};
 
 use crate::{
-    config::Config,
-    models::Timer,
-    utils::{TimeUnit, database::SQLiteDatabase},
+    config::Config, models::Timer, pages::power_controls, utils::database::SQLiteDatabase,
 };
 
-#[derive(Debug, Clone)]
-pub enum ComponentMessage {
-    TextChanged(String),
-    TimeUnitChanged(TimeUnit),
-    SubmitPressed,
-    RadioOptionSelected(usize),
-}
-
-#[derive(Debug, Clone)]
-pub enum PageMessage {
-    PowerFormSubmitted(i32),
-    ComponentMessage(ComponentMessage),
-}
-
+/// Database-related messages
 #[derive(Debug, Clone)]
 pub enum DatabaseMessage {
     Initialized(Result<SQLiteDatabase, String>),
     FailedToInitialize(String),
 }
 
+/// Power management-related messages
 #[derive(Debug, Clone)]
 pub enum PowerMessage {
     ToggleStayAwake,
@@ -38,31 +26,28 @@ pub enum PowerMessage {
     ExecuteShutdown,
 }
 
+/// Timer-related messages
 #[derive(Debug, Clone)]
 pub enum TimerMessage {
     Created(Result<Timer, String>),
     ActiveFetched(Result<Vec<Timer>, String>),
 }
 
+/// Application-level messages
 #[derive(Debug, Clone)]
 pub enum AppMessage {
     TogglePopup,
     UpdateConfig(Config),
     Tick,
-    PageMessage(PageMessage),
+    PowerControlsMessage(power_controls::Message),
     DatabaseMessage(DatabaseMessage),
     TimerMessage(TimerMessage),
     PowerMessage(PowerMessage),
 }
 
-impl From<PageMessage> for AppMessage {
-    fn from(msg: PageMessage) -> Self {
-        AppMessage::PageMessage(msg)
-    }
-}
-
-impl From<ComponentMessage> for PageMessage {
-    fn from(msg: ComponentMessage) -> Self {
-        PageMessage::ComponentMessage(msg)
+/// Conversion implementations for page-level message routing
+impl From<power_controls::Message> for AppMessage {
+    fn from(msg: power_controls::Message) -> Self {
+        AppMessage::PowerControlsMessage(msg)
     }
 }
