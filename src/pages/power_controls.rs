@@ -19,6 +19,8 @@ pub enum Message {
     FormTimeUnitChanged(TimeUnit),
     /// Form submit button pressed
     FormSubmitPressed,
+    /// Clear the form after successful submission
+    ClearForm,
     /// Request to toggle stay awake mode
     ToggleStayAwake,
     /// Request to set suspend timer
@@ -89,6 +91,10 @@ impl Page {
                 Task::none()
             }
             Message::FormSubmitPressed => self.handle_form_submit(),
+            Message::ClearForm => {
+                self.power_form.clear();
+                Task::none()
+            }
             // These messages bubble up to the app level, so we just pass them through
             Message::ToggleStayAwake
             | Message::SetSuspendTime(_)

@@ -23,7 +23,7 @@ use crate::{
     pages::{PowerControls, power_controls},
     utils::{
         database::{Repository, SQLiteDatabase},
-        resources,
+        format_duration, resources,
     },
 };
 
@@ -219,6 +219,65 @@ impl Application for AppModel {
 }
 
 impl AppModel {
+    /// Helper function to send a notification
+    fn send_notification(summary: &str, body: &str, icon: &str) {
+        if let Err(e) = Notification::new()
+            .summary(summary)
+            .body(body)
+            .icon(icon)
+            .hint(Hint::Category("device".to_owned()))
+            .timeout(5000) // 5 seconds
+            .show()
+        {
+            eprintln!("Failed to send notification: {e}");
+        }
+    }
+
+    /// Helper function to create a power timer
+    fn create_power_timer(
+        &mut self,
+        time: i32,
+        timer_type: &TimerType,
+        notification_title: &str,
+        notification_body_prefix: &str,
+        icon: &str,
+    ) -> Task<Action<Message>> {
+        let Some(database) = self.database.clone() else {
+            eprintln!("Database not yet available");
+            return Task::none();
+        };
+
+        // Send notification
+        let display_time = format_duration(time);
+        AppModel::send_notification(
+            notification_title,
+            &format!("{notification_body_prefix} {display_time}"),
+            icon,
+        );
+
+        // Create the timer
+        let timer = Timer::new(time, false, timer_type);
+
+        // Close the popup
+        let close_task = self.toggle_popup();
+
+        // Batch all the tasks
+        Task::batch(vec![
+            close_task.map(|_| Action::None),
+            Task::done(Action::App(Message::PowerControlsMessage(
+                power_controls::Message::ClearForm,
+            ))),
+            Task::perform(
+                async move {
+                    Timer::insert(database.pool(), &timer)
+                        .await
+                        .map_err(|e| e.to_string())
+                },
+                |result| Action::App(Message::TimerMessage(TimerMessage::Created(result))),
+            ),
+        ])
+    }
+
     /// Toggles the main panel visibility.
     fn toggle_popup(&mut self) -> Task<Message> {
         if let Some(p) = self.popup.take() {
@@ -277,7 +336,8 @@ impl AppModel {
                             .icon("alarm")
                             .hint(Hint::Category("alarm".to_owned()))
                             .hint(Hint::Resident(true))
-                            .timeout(0)
+                            // Uncomment for persistent notifications
+                            // .timeout(0)
                             .show()
                         {
                             eprintln!("Failed to send notification: {e}");
@@ -412,6 +472,10 @@ impl AppModel {
                 } else {
                     return AppModel::get_suspend_inhibitor();
                 }
+
+                // Close the popup after toggling
+                let close_task = self.toggle_popup();
+                return close_task.map(|_| Action::None);
             }
             PowerMessage::InhibitAcquired(result) => {
                 match Arc::try_unwrap(result) {
@@ -420,7 +484,6 @@ impl AppModel {
                         // Double okay is a bit silly but matches the async task return type
                         // Also makes the arc unwrap safe
                         self.suspend_inhibitor = Some(file);
-                        println!("Successfully acquired suspend inhibitor");
                     }
                     Ok(Err(err)) => {
                         eprintln!("Failed to acquire inhibit: {err}");
@@ -439,54 +502,39 @@ impl AppModel {
                 // We create a suspend inhibitor when setting a suspend timer so the timer overrides system settings
                 let _inhibitor_task = AppModel::get_suspend_inhibitor();
 
-                let suspend_timer = Timer::new(time, false, &TimerType::Suspend);
-                if let Some(database) = self.database.clone() {
-                    return Task::perform(
-                        async move {
-                            Timer::insert(database.pool(), &suspend_timer)
-                                .await
-                                .map_err(|e| e.to_string())
-                        },
-                        |result| Action::App(Message::TimerMessage(TimerMessage::Created(result))),
-                    );
-                }
-                eprintln!("Database not yet available");
+                return self.create_power_timer(
+                    time,
+                    &TimerType::Suspend,
+                    "Suspend Timer Set",
+                    "System will suspend in",
+                    "system-suspend-symbolic",
+                );
             }
             PowerMessage::SetShutdownTime(time) => {
                 // We create a suspend inhibitor when setting a shutdown timer so the timer overrides system settings
                 // Otherwise the system might suspend before shutting down and never complete until it wakes up and immedately shuts down
                 let _inhibitor_task = AppModel::get_suspend_inhibitor();
 
-                let shutdown_timer = Timer::new(time, false, &TimerType::Shutdown);
-                if let Some(database) = self.database.clone() {
-                    return Task::perform(
-                        async move {
-                            Timer::insert(database.pool(), &shutdown_timer)
-                                .await
-                                .map_err(|e| e.to_string())
-                        },
-                        |result| Action::App(Message::TimerMessage(TimerMessage::Created(result))),
-                    );
-                }
-                eprintln!("Database not yet available");
+                return self.create_power_timer(
+                    time,
+                    &TimerType::Shutdown,
+                    "Shutdown Timer Set",
+                    "System will shutdown in",
+                    "system-shutdown-symbolic",
+                );
             }
             PowerMessage::SetLogoutTime(time) => {
                 // We create a suspend inhibitor when setting a logout timer so the timer overrides system settings
                 // Otherwise the system might suspend before logging out and never complete until it wakes up and immedately logs out
                 let _inhibitor_task = AppModel::get_suspend_inhibitor();
 
-                let logout_timer = Timer::new(time, false, &TimerType::Logout);
-                if let Some(database) = self.database.clone() {
-                    return Task::perform(
-                        async move {
-                            Timer::insert(database.pool(), &logout_timer)
-                                .await
-                                .map_err(|e| e.to_string())
-                        },
-                        |result| Action::App(Message::TimerMessage(TimerMessage::Created(result))),
-                    );
-                }
-                eprintln!("Database not yet available");
+                return self.create_power_timer(
+                    time,
+                    &TimerType::Logout,
+                    "Logout Timer Set",
+                    "System will logout in",
+                    "system-log-out-symbolic",
+                );
             }
             PowerMessage::ExecuteSuspend => {
                 return Task::perform(
