@@ -8,6 +8,7 @@ use i18n::init;
 use i18n_embed::DesktopLanguageRequester;
 
 mod app;
+mod app_messages;
 mod components;
 mod config;
 mod i18n;
