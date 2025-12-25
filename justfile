@@ -12,7 +12,7 @@ run *args:
 
 # Run clippy
 check:
-    cargo clippy --all-features -- -W clippy::pedantic
+    cargo clippy --all-targets --all-features -- -W clippy::pedantic -D warnings
 
 # Format code
 fmt:

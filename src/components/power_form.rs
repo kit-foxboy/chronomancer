@@ -137,7 +137,7 @@ mod tests {
         form.input_value = "-5".to_string();
         assert!(!form.validate_input());
 
-        form.input_value = "".to_string();
+        form.input_value = String::new();
         assert!(!form.validate_input());
     }
 
