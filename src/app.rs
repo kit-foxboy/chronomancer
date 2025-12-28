@@ -329,6 +329,11 @@ impl AppModel {
                             PowerMessage::ExecuteShutdown,
                         ))));
                     }
+                    Ok(TimerType::Reboot) => {
+                        tasks.push(Task::done(Action::App(Message::PowerMessage(
+                            PowerMessage::ExecuteReboot,
+                        ))));
+                    }
                     Ok(TimerType::UserDefined(ref description)) => {
                         if let Err(e) = Notification::new()
                             .summary("Timer Finished")
@@ -395,6 +400,9 @@ impl AppModel {
             }
             power_controls::Message::SetLogoutTime(time) => {
                 self.handle_power_message(PowerMessage::SetLogoutTime(time))
+            }
+            power_controls::Message::SetRebootTime(time) => {
+                self.handle_power_message(PowerMessage::SetRebootTime(time))
             }
             // Let the page handle its own state updates
             _ => self.power_controls.update(msg).map(|action| match action {
@@ -536,6 +544,19 @@ impl AppModel {
                     "system-log-out-symbolic",
                 );
             }
+            PowerMessage::SetRebootTime(time) => {
+                // We create a suspend inhibitor when setting a reboot timer so the timer overrides system settings
+                // Otherwise the system might suspend before rebooting and never complete until it wakes up and immediately reboots
+                let _inhibitor_task = AppModel::get_suspend_inhibitor();
+
+                return self.create_power_timer(
+                    time,
+                    &TimerType::Reboot,
+                    "Reboot Timer Set",
+                    "System will reboot in",
+                    "system-reboot-symbolic",
+                );
+            }
             PowerMessage::ExecuteSuspend => {
                 return Task::perform(
                     async move { resources::execute_system_suspend().await },
@@ -564,7 +585,19 @@ impl AppModel {
                     async move { resources::execute_system_logout().await },
                     |result| {
                         if let Err(e) = result {
-                            eprintln!("Failed to logout system: {e}");
+                            eprintln!("Failed to logout: {e}");
+                        }
+                        Action::None
+                    },
+                );
+            }
+            PowerMessage::ExecuteReboot => {
+                println!("Executing system reboot");
+                return Task::perform(
+                    async move { resources::execute_system_reboot().await },
+                    |result| {
+                        if let Err(e) = result {
+                            eprintln!("Failed to reboot: {e}");
                         }
                         Action::None
                     },

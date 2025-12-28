@@ -21,9 +21,11 @@ pub enum PowerMessage {
     SetSuspendTime(i32),
     SetLogoutTime(i32),
     SetShutdownTime(i32),
+    SetRebootTime(i32),
     ExecuteSuspend,
     ExecuteLogout,
     ExecuteShutdown,
+    ExecuteReboot,
 }
 
 /// Timer-related messages

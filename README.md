@@ -42,11 +42,11 @@ sudo just install
 - [x] Sleep timer override functionality
 - [x] Power management at set times (suspend, hibernate, shutdown, logout)
 - [x] Systemd bus integration with proper flatpak permissions
-- [ ] Restart timers (I have no clue why I forgot this with the other power management features)
+- [x] Restart timers (I have no clue why I forgot this with the other power management features)
 - [ ] Reminders with custom messages
 - [ ] Recurring timers
 - [ ] Script execution on timer completion (planned for much later due to security considerations and flatpak challenges)
-- [ ] Additional language support (Also for later because I barely speak even one language XwX)
+- [ ] Additional language support (Only if requested because I barely speak even one language XwX)
 
 ## For Developers
 
@@ -78,8 +78,8 @@ This project includes comprehensive documentation for developers in the `.github
 
 - **Copilot Instructions:** `.github/copilot-instructions.md` - Project overview, architecture, and patterns
 - **Architectural Idioms:** `.github/architectural-idioms.md` - Component-to-page message flow patterns
-- **Flatpak Building:** `.github/FLATPAK_BUILDING.md` - Guide to building with Flathub-preferred builder
-- **UI Spacing Guide:** `.github/UI_SPACING_GUIDE.md`
+- **Flatpak Building:** `.github/flatpak.md` - Guide to building with Flathub-preferred builder
+- **UI Spacing Guide:** `.github/ui_spacing_guide.md`
 - **Iterator Patterns:** `.github/iterator-patterns.md`
 - **Icon Theming Notes:** `.github/icon-theming-notes.md`
 - **Macro Explanations:** `.github/macro-explanations.md`

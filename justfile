@@ -28,8 +28,7 @@ install:
     install -Dm644 resources/{{ appid }}.desktop /usr/share/applications/{{ appid }}.desktop
     install -Dm644 resources/{{ appid }}.metainfo.xml /usr/share/metainfo/{{ appid }}.metainfo.xml
     install -Dm644 resources/icons/hicolor/scalable/apps/hourglass.svg /usr/share/icons/hicolor/scalable/apps/{{ appid }}.svg
-    install -Dm644 resources/icons/hicolor/scalable/apps/{{ appid }}-eye.svg /usr/share/icons/hicolor/scalable/apps/{{ appid }}-eye.svg
-    install -Dm644 resources/icons/hicolor/scalable/apps/{{ appid }}-stay-awake.svg /usr/share/icons/hicolor/scalable/apps/{{ appid }}-stay-awake.svg
+    install -Dm644 resources/icons/hicolor/scalable/apps/stay-awake.svg /usr/share/icons/hicolor/scalable/apps/{{ appid }}-stay-awake.svg
 
 # Uninstall from system (requires root)
 uninstall:
