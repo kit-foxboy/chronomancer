@@ -2,7 +2,7 @@
 
 A COSMIC panel applet for comprehensive time management. Set countdown timers, schedule power management actions, and manage your system's sleep behavior—all from your system panel. It uses system bus to place inhibitors on suspend and ensure that the system uses the lightweight app timer to perform the desired operation. It has a sqlite database backend to eventually support recurring timers and such between reboots. Adding scripting support and/or systemd units is also in the works.
 
-![Chronomancer power controls interface showing sleep timer override options](resources/screenshots/chronomancer-0.1.0-main.png)
+![Chronomancer power controls interface showing sleep timer override options](resources/screenshots/chronomancer-main.png)
 
 ## For Users
 
@@ -22,7 +22,7 @@ just
 sudo just install
 ```
 
-**Note:** COSMIC currently requires applets to be installed system-wide (when outside of Flatpak environments), so elevated privileges are necessary for installation.
+**Note:** When installing this way and not flatpak, you need elevated privilages to write to system folders. There may be a way around this, but as it will be distributed with flatpak eventually, this is not a priority. If you know a better way, feel free to let me know!
 
 ### Features
 
@@ -41,10 +41,11 @@ sudo just install
 - [x] Notifications on timer completion
 - [x] Sleep timer override functionality
 - [x] Power management at set times (suspend, hibernate, shutdown, logout)
-- [x] Reminders with custom messages
 - [x] Systemd bus integration with proper flatpak permissions
+- [ ] Restart timers (I have no clue why I forgot this with the other power management features)
+- [ ] Reminders with custom messages
 - [ ] Recurring timers
-- [ ] Script execution on timer completion (planned for much later due to security considerations)
+- [ ] Script execution on timer completion (planned for much later due to security considerations and flatpak challenges)
 - [ ] Additional language support (Also for later because I barely speak even one language XwX)
 
 ## For Developers
@@ -119,13 +120,6 @@ If you find this project useful and would like to support my further involvement
 Agentic AI has been used to generate document templates and rapidly prototype design patterns in the .github folder. COSMIC is still extremely new, and there aren't strong opinions on best practices and patterns outside of MVU yet, so this can and will evolve over time. This documentation serves more as a journal of my learning process and design decisions with AI summarizing the choices made. Only rough structural code output by AI is used in production and is only meant to serve as high level examples of possible approaches. I'm against outsourcing critical thinking but I do see the value in using AI to help brainstorm and explore ideas rapidly or doing super tedious stuff like testing and automation. I find a rubber duck that talks back and writes notes and snippets of patterns I've whiteboarded to be super useful tbh. 
 
 On the off chance you're a programmer reading about my dumb little project, don't be demoralized that AI is everywhere now. Remember that you're in charge and AI still makes shit up all the time. Hang in there. Just because knowing a language isn't enough to be competitive in the job market anymore doesn't mean that you don't have a role. It's up to you to actually KNOW how things work and be able to maintain them. I've always felt technology is always supposed to make life better for humans and in my own microscopic way, I want to contribute to that. Leave the tedium to skynet and don't give up on the world of computing or yourself.
-
-"Don't be a tech bro, the world has enough of that. What we need now is for the honest to God nerds to make loving technology respectable, ethical, and worthwhile again." 
-- Kit
-
-## Credits
-
-Hourglass and eye icons by Robbie Pearce from the [Softies](https://www.robbiepearce.com/softies/) icon set, used under the [Creative Commons Attribution 3.0 License](https://creativecommons.org/licenses/by/3.0/).
 
 ## License
 
