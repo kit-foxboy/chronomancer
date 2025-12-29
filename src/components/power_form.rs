@@ -131,6 +131,8 @@ impl PowerForm {
     pub fn handle_text_input(&mut self, new_text: &str) {
         if let Ok(value) = new_text.parse::<u32>() {
             self.input_value = value.to_string();
+        } else if new_text.is_empty() {
+            self.input_value.clear();
         }
     }
 
