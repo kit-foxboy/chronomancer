@@ -6,7 +6,11 @@ appid := 'io.vulpapps.Chronomancer'
 default:
     cargo build --release
 
-# Run application with backtrace
+# Run application in dev mode with backtrace
+dev *args:
+    RUST_BACKTRACE=1 cargo run {{ args }}
+
+# Run application in release mode
 run *args:
     RUST_BACKTRACE=1 cargo run --release {{ args }}
 
