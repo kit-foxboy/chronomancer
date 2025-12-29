@@ -33,6 +33,8 @@ pub enum Message {
     SetLogoutTime(i32),
     /// Request to set reboot timer
     SetRebootTime(i32),
+    /// Request to close the popup
+    ClosePopup,
 }
 
 /// Struct representing the power controls page
@@ -120,21 +122,38 @@ impl Page {
             | Message::SetSuspendTime(_)
             | Message::SetShutdownTime(_)
             | Message::SetLogoutTime(_)
-            | Message::SetRebootTime(_) => Task::none(),
+            | Message::SetRebootTime(_)
+            | Message::ClosePopup => Task::none(),
         }
     }
 
     /// Handle radio button selection
     fn handle_radio_selection(&mut self, new_index: usize) -> Task<Action<Message>> {
         let previous = self.power_buttons.selected;
-        self.power_buttons.selected = Some(new_index);
-
-        // Update form placeholder based on selected action
         let operation = PowerOperation::from_index(new_index);
+
+        // Handle stay awake button specially
+        if operation == PowerOperation::StayAwake {
+            // If already selected, deselect it
+            if previous == Some(PowerOperation::StayAwake.index()) {
+                self.power_buttons.selected = None;
+            } else {
+                self.power_buttons.selected = Some(new_index);
+            }
+
+            // Close popup and toggle stay awake
+            return Task::batch(vec![
+                Task::done(Action::App(Message::ToggleStayAwake)),
+                Task::done(Action::App(Message::ClosePopup)),
+            ]);
+        }
+
+        // For other buttons, select normally
+        self.power_buttons.selected = Some(new_index);
         self.power_form.placeholder_text = operation.placeholder_text();
 
-        // Toggle stay awake if switching to/from stay awake button
-        if operation == PowerOperation::StayAwake || previous == Some(0) {
+        // If switching from stay awake to another option, toggle it off
+        if previous == Some(PowerOperation::StayAwake.index()) {
             Task::done(Action::App(Message::ToggleStayAwake))
         } else {
             Task::none()

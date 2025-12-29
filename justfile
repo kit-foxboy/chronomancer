@@ -36,7 +36,6 @@ uninstall:
     rm -f /usr/share/applications/{{ appid }}.desktop
     rm -f /usr/share/metainfo/{{ appid }}.metainfo.xml
     rm -f /usr/share/icons/hicolor/scalable/apps/{{ appid }}.svg
-    rm -f /usr/share/icons/hicolor/scalable/apps/{{ appid }}-eye.svg
     rm -f /usr/share/icons/hicolor/scalable/apps/{{ appid }}-stay-awake.svg
 
 # Generate cargo-sources.json for Flatpak

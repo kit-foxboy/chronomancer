@@ -142,11 +142,13 @@ impl Application for AppModel {
         self.core
             .applet
             .icon_button(&self.icon_name)
-            .class(if self.suspend_inhibitor.is_some() {
-                theme::Button::Suggested
-            } else {
-                theme::Button::AppletIcon
-            })
+            .class(
+                if self.suspend_inhibitor.is_some() || !self.active_timers.is_empty() {
+                    theme::Button::Suggested
+                } else {
+                    theme::Button::AppletIcon
+                },
+            )
             .on_press_down(Message::TogglePopup)
             .into()
     }
@@ -403,6 +405,10 @@ impl AppModel {
             }
             power_controls::Message::SetRebootTime(time) => {
                 self.handle_power_message(PowerMessage::SetRebootTime(time))
+            }
+            power_controls::Message::ClosePopup => {
+                let close_task = self.toggle_popup();
+                close_task.map(|_| Action::None)
             }
             // Let the page handle its own state updates
             _ => self.power_controls.update(msg).map(|action| match action {
