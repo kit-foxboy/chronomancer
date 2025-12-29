@@ -1,5 +1,7 @@
 use crate::{
-    components::{PowerForm, ToggleIconRadio, radio_components::RadioComponents},
+    components::{
+        PowerForm, ToggleIconRadio, power_form::PowerOperation, radio_components::RadioComponents,
+    },
     fl,
     utils::{
         TimeUnit,
@@ -29,6 +31,10 @@ pub enum Message {
     SetShutdownTime(i32),
     /// Request to set logout timer
     SetLogoutTime(i32),
+    /// Request to set reboot timer
+    SetRebootTime(i32),
+    /// Request to close the popup
+    ClosePopup,
 }
 
 /// Struct representing the power controls page
@@ -43,10 +49,26 @@ impl Default for Page {
     fn default() -> Self {
         Self {
             power_buttons: RadioComponents::new(vec![
-                ToggleIconRadio::new(0, "io.vulpapps.Chronomancer-stay-awake"),
-                ToggleIconRadio::new(1, "system-suspend-symbolic"),
-                ToggleIconRadio::new(2, "system-shutdown-symbolic"),
-                ToggleIconRadio::new(3, "system-log-out-symbolic"),
+                ToggleIconRadio::new(
+                    PowerOperation::StayAwake.index(),
+                    PowerOperation::StayAwake.icon_name(),
+                ),
+                ToggleIconRadio::new(
+                    PowerOperation::Suspend.index(),
+                    PowerOperation::Suspend.icon_name(),
+                ),
+                ToggleIconRadio::new(
+                    PowerOperation::Logout.index(),
+                    PowerOperation::Logout.icon_name(),
+                ),
+                ToggleIconRadio::new(
+                    PowerOperation::Reboot.index(),
+                    PowerOperation::Reboot.icon_name(),
+                ),
+                ToggleIconRadio::new(
+                    PowerOperation::Shutdown.index(),
+                    PowerOperation::Shutdown.icon_name(),
+                ),
             ]),
             power_form: PowerForm::new(fl!("set-time-label", operation = fl!("operation-suspend"))),
         }
@@ -72,8 +94,8 @@ impl Page {
         };
 
         column![power_buttons, form]
-            .align_x(Alignment::Start)
-            .padding(Padding::standard())
+            .align_x(Alignment::Center)
+            .padding(Padding::no_bottom())
             .spacing(Gaps::s())
             .into()
     }
@@ -99,24 +121,39 @@ impl Page {
             Message::ToggleStayAwake
             | Message::SetSuspendTime(_)
             | Message::SetShutdownTime(_)
-            | Message::SetLogoutTime(_) => Task::none(),
+            | Message::SetLogoutTime(_)
+            | Message::SetRebootTime(_)
+            | Message::ClosePopup => Task::none(),
         }
     }
 
     /// Handle radio button selection
     fn handle_radio_selection(&mut self, new_index: usize) -> Task<Action<Message>> {
         let previous = self.power_buttons.selected;
+        let operation = PowerOperation::from_index(new_index);
+
+        // Handle stay awake button specially
+        if operation == PowerOperation::StayAwake {
+            // If already selected, deselect it
+            if previous == Some(PowerOperation::StayAwake.index()) {
+                self.power_buttons.selected = None;
+            } else {
+                self.power_buttons.selected = Some(new_index);
+            }
+
+            // Close popup and toggle stay awake
+            return Task::batch(vec![
+                Task::done(Action::App(Message::ToggleStayAwake)),
+                Task::done(Action::App(Message::ClosePopup)),
+            ]);
+        }
+
+        // For other buttons, select normally
         self.power_buttons.selected = Some(new_index);
+        self.power_form.placeholder_text = operation.placeholder_text();
 
-        // Update form placeholder based on selected action
-        self.power_form.placeholder_text = match new_index {
-            2 => fl!("set-time-label", operation = fl!("operation-shutdown")),
-            3 => fl!("set-time-label", operation = fl!("operation-logout")),
-            _ => fl!("set-time-label", operation = fl!("operation-suspend")),
-        };
-
-        // Toggle stay awake if switching to/from stay awake button
-        if new_index == 0 || previous == Some(0) {
+        // If switching from stay awake to another option, toggle it off
+        if previous == Some(PowerOperation::StayAwake.index()) {
             Task::done(Action::App(Message::ToggleStayAwake))
         } else {
             Task::none()
@@ -134,11 +171,15 @@ impl Page {
             * self.power_form.time_unit.to_seconds_multiplier();
 
         if let Some(index) = self.power_buttons.selected {
-            match index {
-                1 => Task::done(Action::App(Message::SetSuspendTime(value))),
-                2 => Task::done(Action::App(Message::SetShutdownTime(value))),
-                3 => Task::done(Action::App(Message::SetLogoutTime(value))),
-                _ => Task::none(),
+            let operation = PowerOperation::from_index(index);
+            match operation {
+                PowerOperation::Suspend => Task::done(Action::App(Message::SetSuspendTime(value))),
+                PowerOperation::Shutdown => {
+                    Task::done(Action::App(Message::SetShutdownTime(value)))
+                }
+                PowerOperation::Reboot => Task::done(Action::App(Message::SetRebootTime(value))),
+                PowerOperation::Logout => Task::done(Action::App(Message::SetLogoutTime(value))),
+                PowerOperation::StayAwake => Task::none(),
             }
         } else {
             Task::none()
@@ -157,7 +198,7 @@ mod tests {
     #[test]
     fn test_create_power_controls() {
         let page = get_test_page();
-        assert_eq!(page.power_buttons.options.len(), 4);
+        assert_eq!(page.power_buttons.options.len(), 5);
         assert_eq!(
             page.power_form.placeholder_text,
             fl!("set-time-label", operation = fl!("operation-suspend"))
@@ -168,18 +209,25 @@ mod tests {
     fn test_radio_selection_updates_placeholder() {
         let mut page = get_test_page();
 
-        // Select shutdown option
+        // Select logout option
         let _ = page.update(Message::RadioOptionSelected(2));
+        assert_eq!(
+            page.power_form.placeholder_text,
+            fl!("set-time-label", operation = fl!("operation-logout"))
+        );
+
+        // Select shutdown option
+        let _ = page.update(Message::RadioOptionSelected(4));
         assert_eq!(
             page.power_form.placeholder_text,
             fl!("set-time-label", operation = fl!("operation-shutdown"))
         );
 
-        // Select logout option
+        // Select reboot option
         let _ = page.update(Message::RadioOptionSelected(3));
         assert_eq!(
             page.power_form.placeholder_text,
-            fl!("set-time-label", operation = fl!("operation-logout"))
+            fl!("set-time-label", operation = fl!("operation-reboot"))
         );
 
         // Select suspend option

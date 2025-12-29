@@ -6,7 +6,11 @@ appid := 'io.vulpapps.Chronomancer'
 default:
     cargo build --release
 
-# Run application with backtrace
+# Run application in dev mode with backtrace
+dev *args:
+    RUST_BACKTRACE=1 cargo run {{ args }}
+
+# Run application in release mode
 run *args:
     RUST_BACKTRACE=1 cargo run --release {{ args }}
 
@@ -28,8 +32,7 @@ install:
     install -Dm644 resources/{{ appid }}.desktop /usr/share/applications/{{ appid }}.desktop
     install -Dm644 resources/{{ appid }}.metainfo.xml /usr/share/metainfo/{{ appid }}.metainfo.xml
     install -Dm644 resources/icons/hicolor/scalable/apps/hourglass.svg /usr/share/icons/hicolor/scalable/apps/{{ appid }}.svg
-    install -Dm644 resources/icons/hicolor/scalable/apps/{{ appid }}-eye.svg /usr/share/icons/hicolor/scalable/apps/{{ appid }}-eye.svg
-    install -Dm644 resources/icons/hicolor/scalable/apps/{{ appid }}-stay-awake.svg /usr/share/icons/hicolor/scalable/apps/{{ appid }}-stay-awake.svg
+    install -Dm644 resources/icons/hicolor/scalable/apps/stay-awake.svg /usr/share/icons/hicolor/scalable/apps/{{ appid }}-stay-awake.svg
 
 # Uninstall from system (requires root)
 uninstall:
@@ -37,7 +40,6 @@ uninstall:
     rm -f /usr/share/applications/{{ appid }}.desktop
     rm -f /usr/share/metainfo/{{ appid }}.metainfo.xml
     rm -f /usr/share/icons/hicolor/scalable/apps/{{ appid }}.svg
-    rm -f /usr/share/icons/hicolor/scalable/apps/{{ appid }}-eye.svg
     rm -f /usr/share/icons/hicolor/scalable/apps/{{ appid }}-stay-awake.svg
 
 # Generate cargo-sources.json for Flatpak

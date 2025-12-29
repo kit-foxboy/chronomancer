@@ -144,3 +144,31 @@ pub async fn execute_system_logout() -> Result<()> {
 
     Ok(())
 }
+
+/// Execute system reboot by calling the login1 D-Bus API.
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - Failed to connect to system bus
+/// - The D-Bus call to `Reboot` fails
+pub async fn execute_system_reboot() -> Result<()> {
+    let connection = Connection::system()
+        .await
+        .context("Failed to connect to system bus")?;
+
+    let proxy = Proxy::new(
+        &connection,
+        "org.freedesktop.login1",
+        "/org/freedesktop/login1",
+        "org.freedesktop.login1.Manager",
+    )
+    .await?;
+
+    let _: () = proxy
+        .call("Reboot", &(true,))
+        .await
+        .context("D-Bus call to Reboot failed")?;
+
+    Ok(())
+}

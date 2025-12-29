@@ -47,6 +47,7 @@ pub struct Padding;
 impl Padding {
     /// Standard padding for most components
     #[must_use]
+    #[allow(dead_code)]
     pub fn standard() -> [u16; 4] {
         let xs = Gaps::xs();
         [xs, xs, xs, xs]
@@ -56,5 +57,12 @@ impl Padding {
     #[must_use]
     pub fn horizontal(amount: u16) -> [u16; 4] {
         [0, amount, 0, amount]
+    }
+
+    /// Standard padding without bottom padding (for popups)
+    #[must_use]
+    pub fn no_bottom() -> [u16; 4] {
+        let xs = Gaps::xs();
+        [xs, xs, 0, xs]
     }
 }

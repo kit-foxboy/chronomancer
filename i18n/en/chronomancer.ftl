@@ -11,6 +11,7 @@ hours = Hours
 days = Days
 operation-suspend = Suspend
 operation-shutdown = Shutdown
+operation-reboot = Reboot
 operation-restart = Restart
 operation-logout = Logout
 set-time-label = Set { $operation } Time

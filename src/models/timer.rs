@@ -19,6 +19,7 @@ pub enum TimerType {
     Suspend,
     Logout,
     Shutdown,
+    Reboot,
 }
 
 impl TimerType {
@@ -29,6 +30,7 @@ impl TimerType {
             TimerType::Suspend => "System Suspend",
             TimerType::Logout => "System Logout",
             TimerType::Shutdown => "System Shutdown",
+            TimerType::Reboot => "System Reboot",
         }
     }
 }
@@ -41,6 +43,7 @@ impl FromStr for TimerType {
             "System Suspend" => Ok(TimerType::Suspend),
             "System Logout" => Ok(TimerType::Logout),
             "System Shutdown" => Ok(TimerType::Shutdown),
+            "System Reboot" => Ok(TimerType::Reboot),
             other => Ok(TimerType::UserDefined(other.into())),
         }
     }
