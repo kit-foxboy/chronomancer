@@ -5,8 +5,8 @@ use cosmic::{
     cosmic_config::{self, CosmicConfigEntry},
     cosmic_theme::Spacing,
     iced::{
-        Limits, Subscription, platform_specific::shell::commands::popup, stream::channel,
-        widget::column, window,
+        Alignment, Length, Limits, Subscription, platform_specific::shell::commands::popup,
+        stream::channel, widget::column, window,
     },
     iced_runtime::Appearance,
     theme,
@@ -124,7 +124,10 @@ impl Application for AppModel {
                 .power_controls
                 .view()
                 .map(Message::PowerControlsMessage);
-            let content = column![power].spacing(space_m);
+            let content = column![power]
+                .spacing(space_m)
+                .align_x(Alignment::Center)
+                .width(Length::Fill);
 
             self.core
                 .applet

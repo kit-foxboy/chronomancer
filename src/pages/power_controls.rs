@@ -94,8 +94,8 @@ impl Page {
         };
 
         column![power_buttons, form]
-            .align_x(Alignment::Start)
-            .padding(Padding::standard())
+            .align_x(Alignment::Center)
+            .padding(Padding::no_bottom())
             .spacing(Gaps::s())
             .into()
     }
