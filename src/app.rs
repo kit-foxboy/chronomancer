@@ -485,7 +485,6 @@ impl AppModel {
             PowerMessage::ToggleStayAwake => {
                 if let Some(inhibitor) = self.suspend_inhibitor.take() {
                     resources::release_suspend_inhibit(inhibitor);
-                    println!("Released suspend inhibitor");
                 } else {
                     return AppModel::get_suspend_inhibitor();
                 }

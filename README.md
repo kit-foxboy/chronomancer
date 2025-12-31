@@ -117,9 +117,11 @@ If you find this project useful and would like to support my further involvement
 
 ## Important Note / Rant
 
-Agentic AI has been used to generate document templates and rapidly prototype design patterns in the .github folder. COSMIC is still extremely new, and there aren't strong opinions on best practices and patterns outside of MVU yet, so this can and will evolve over time. This documentation serves more as a journal of my learning process and design decisions with AI summarizing the choices made. Only rough structural code output by AI is used in production and is only meant to serve as high level examples of possible approaches. I'm against outsourcing critical thinking but I do see the value in using AI to help brainstorm and explore ideas rapidly or doing super tedious stuff like testing and automation. I find a rubber duck that talks back and writes notes and snippets of patterns I've whiteboarded to be super useful tbh. 
+Agentic AI has been used to generate documentation and rapidly prototype design patterns in the .github folder. COSMIC is still extremely new, and there aren't strong opinions on best practices and patterns outside of MVU yet, so this can and will evolve over time. This documentation serves more as a journal of my learning process and design decisions with AI summarizing the choices made than anything. Only rough structural code output by AI and is only meant to serve as high level examples of possible approaches. After all, it's optimal for templatized and tedious tasks that don't involve as much reasoning. These journal documents are a good example. It writes the skeleton and I yippity yap my thoughts and experiences into it.
 
 On the off chance you're a programmer reading about my dumb little project, don't be demoralized that AI is everywhere now. Remember that you're in charge and AI still makes shit up all the time. Hang in there. Just because knowing a language isn't enough to be competitive in the job market anymore doesn't mean that you don't have a role. It's up to you to actually KNOW how things work and be able to maintain them. I've always felt technology is always supposed to make life better for humans and in my own microscopic way, I want to contribute to that. Leave the tedium to skynet and don't give up on the world of computing or yourself.
+
+ "Dev who uses tools makes a good dev, tools who use devs makes the dev a tool - Codefucius (MY NEW OC, DON'T STEAL)" 
 
 ## License
 

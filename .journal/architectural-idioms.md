@@ -274,6 +274,79 @@ See the following files for reference:
 
 ---
 
+## Module Organization: Components vs Utils
+
+### The Distinction
+
+Chronomancer organizes code into two primary module types with clear responsibilities:
+
+#### Components (`src/components/`)
+
+**Purpose**: GUI-related functionality that participates in the MVU (Model-View-Update) cycle.
+
+**Characteristics**:
+- Contains UI-related structs and logic
+- Implements `view()` methods that return `Element<Message>`
+- May implement `update()` methods or public state manipulation methods
+- Accepts message constructors as parameters (message-agnostic)
+- Stores UI state (form values, selections, visual state)
+- Deals with user interactions and rendering
+
+**Examples**:
+- `PowerForm` - Form component with text input and combo box
+- `ToggleIconRadio` - Icon-based radio button component
+- `RadioComponents<T>` - Generic radio button group manager
+
+**What belongs here**:
+- Reusable UI widgets
+- Form components
+- Custom controls
+- Layout helpers that manage UI state
+
+**What does NOT belong here**:
+- Pure functions without UI concerns
+- Data transformation logic
+- Validation functions that don't render UI
+- File I/O, database, or network logic
+
+#### Utils (`src/utils/`)
+
+**Purpose**: Non-UI helper functions and utilities that don't participate in the message system.
+
+**Characteristics**:
+- Pure functions or simple structs
+- No `view()` or `update()` methods
+- No message types or `Element` returns
+- Stateless or simple state containers
+- Reusable across components, pages, and services
+
+**Examples**:
+- `filters::filter_positive_integer()` - Text input validation
+- `time::format_duration()` - Duration formatting
+- `resources::system_icon()` - Icon loading helper
+- `database::Repository` - Database abstraction trait
+
+**What belongs here**:
+- Text filters and validators
+- Formatters and parsers
+- Resource loaders
+- Type definitions (enums, structs for data)
+- Database interfaces
+- System integration helpers (D-Bus, systemd)
+
+**What does NOT belong here**:
+- Anything that renders UI
+- Anything that handles messages
+- Stateful UI components
+
+### References
+
+- Components: `src/components/` directory
+- Utils: `src/utils/` directory
+- Example of proper separation: `utils/filters.rs` (utilities) used by `components/power_form.rs` (UI component)
+
+---
+
 ## Future Idioms
 
 As the project grows, document new architectural patterns here. I'm sure a lot will change as I write more applications and get feedback from contributors.
