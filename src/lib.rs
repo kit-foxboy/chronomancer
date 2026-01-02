@@ -5,6 +5,7 @@
 //! applet runtime, while this `lib.rs` lets us test the domain & utility layers.
 
 // Core modules
+pub mod app_messages;
 pub mod config;
 pub mod i18n;
 pub mod models;

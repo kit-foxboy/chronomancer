@@ -38,6 +38,10 @@ pub enum Message {
 }
 
 /// Struct representing the power controls page
+///
+/// Includes radio buttons for power operations and a form for time input
+/// associated with the selected operation.
+/// Shows the page view and handles updates based on messages.
 #[derive(Debug, Clone)]
 pub struct Page {
     pub power_buttons: RadioComponents<ToggleIconRadio>,
@@ -77,6 +81,12 @@ impl Default for Page {
 
 impl Page {
     /// Render the power controls page
+    ///
+    /// Displays radio buttons and conditionally shows the power form
+    /// based on the selected operation.
+    ///
+    /// # Returns
+    /// An `Element` representing the page view
     pub fn view(&self) -> Element<'_, Message> {
         let power_buttons = self.power_buttons.view(Message::RadioOptionSelected);
 
@@ -101,6 +111,16 @@ impl Page {
     }
 
     /// Update the power controls page state based on messages
+    ///
+    /// Handles radio button selections, form input changes,
+    /// time unit changes, and form submissions. App-level messages are ignored here
+    /// returning `Task::none()`.
+    ///
+    /// # Arguments
+    /// - `message` - The message to process
+    ///
+    /// # Returns
+    /// A `Task` representing any actions to be taken
     pub fn update(&mut self, message: Message) -> Task<Action<Message>> {
         match message {
             Message::RadioOptionSelected(new_index) => self.handle_radio_selection(new_index),
@@ -117,7 +137,6 @@ impl Page {
                 self.power_form.clear();
                 Task::none()
             }
-            // These messages bubble up to the app level, so we just pass them through
             Message::ToggleStayAwake
             | Message::SetSuspendTime(_)
             | Message::SetShutdownTime(_)
@@ -128,6 +147,15 @@ impl Page {
     }
 
     /// Handle radio button selection
+    ///
+    /// Updates the selected operation and adjusts the power form placeholder text.
+    /// Special handling is included for the "stay awake" option to toggle its state.
+    ///
+    /// # Arguments
+    /// - `new_index` - The index of the newly selected radio button
+    ///
+    /// # Returns
+    /// A `Task` representing any actions to be taken
     fn handle_radio_selection(&mut self, new_index: usize) -> Task<Action<Message>> {
         let previous = self.power_buttons.selected;
         let operation = PowerOperation::from_index(new_index);
@@ -161,6 +189,12 @@ impl Page {
     }
 
     /// Handle form submission
+    ///
+    /// Validates the input and constructs the appropriate action
+    /// based on the selected power operation.
+    ///
+    /// # Returns
+    /// A `Task` representing any actions to be taken
     fn handle_form_submit(&mut self) -> Task<Action<Message>> {
         if !self.power_form.validate_input() {
             self.power_form.clear();
