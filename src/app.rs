@@ -31,8 +31,9 @@ const APP_ID: &str = "io.vulpapps.Chronomancer";
 // const REPOSITORY: &str = env!("CARGO_PKG_REPOSITORY");
 // const APP_ICON: &[u8] = include_bytes!("../resources/icons/hicolor/scalable/apps/hourglass.svg");
 
-/// The application model stores app-specific state used to describe its interface and
-/// drive its logic.
+/// Application model for the Chronomancer applet.
+///
+/// The application model stores app-specific state and handles messages.
 pub struct AppModel {
     /// Application state which is managed by the COSMIC runtime.
     core: Core,
@@ -57,6 +58,10 @@ pub struct AppModel {
 }
 
 /// Create a COSMIC application from the app model
+///
+/// The application implements the `Application` trait from COSMIC,
+/// defining the app's lifecycle, view, update logic, and subscriptions.
+/// This is the main entry point for the applet proper.
 impl Application for AppModel {
     type Executor = cosmic::executor::Default;
     type Flags = ();
@@ -73,8 +78,10 @@ impl Application for AppModel {
     }
 
     /// Initializes the application with any given flags and startup commands.
+    ///
+    /// We initialize the app model with default state, load configuration, and start the database connection here.
+    /// It's also where keybinds will go if/when implemented.
     fn init(core: cosmic::Core, _flags: Self::Flags) -> (Self, Task<cosmic::Action<Message>>) {
-        // Construct the app model with the runtime's core.
         let app = AppModel {
             core,
             // key_binds: HashMap::new(),
@@ -116,6 +123,16 @@ impl Application for AppModel {
     }
 
     /// Define the view window for the application.
+    ///
+    /// This method constructs the popup window content when it is open.
+    ///
+    /// # Arguments
+    ///
+    /// - `id`: The window ID to render
+    ///
+    /// # Returns
+    ///
+    /// An `Element` representing the window content.
     fn view_window(&self, id: window::Id) -> Element<'_, Message> {
         if matches!(self.popup, Some(p) if p == id) {
             let Spacing { space_m, .. } = theme::active().cosmic().spacing;
@@ -141,6 +158,8 @@ impl Application for AppModel {
     }
 
     /// Describes the interface based on the current state of the application model.
+    ///
+    /// This method constructs the icon button displayed in the system tray, NOT the applet popup window.
     fn view(&'_ self) -> Element<'_, Message> {
         self.core
             .applet
@@ -164,6 +183,13 @@ impl Application for AppModel {
     ///
     /// Tasks may be returned for asynchronous execution of code in the background
     /// on the application's async runtime.
+    ///
+    /// # Arguments
+    ///
+    /// - `message`: The message to handle.
+    ///
+    /// # Returns
+    /// The task (or batch of tasks) to be executed.
     fn update(&mut self, message: Self::Message) -> Task<Action<Self::Message>> {
         let task: Task<Action<Message>> = match message {
             Message::TogglePopup => {
@@ -223,8 +249,19 @@ impl Application for AppModel {
     }
 }
 
+/// Helper functions for the application model.
 impl AppModel {
-    /// Helper function to send a notification
+    /// Sends a desktop notification with a 5-second timeout.
+    ///
+    /// Creates and displays a notification using the system notification daemon.
+    /// The notification is categorized as "device" and will automatically dismiss
+    /// after 5 seconds. Errors are logged to stderr but do not propagate.
+    ///
+    /// # Arguments
+    ///
+    /// - `summary`: Notification title
+    /// - `body`: Notification body text
+    /// - `icon`: Icon name from the freedesktop icon theme (e.g., "alarm", "battery")
     fn send_notification(summary: &str, body: &str, icon: &str) {
         if let Err(e) = Notification::new()
             .summary(summary)
@@ -238,7 +275,25 @@ impl AppModel {
         }
     }
 
-    /// Helper function to create a power timer
+    /// Creates a power management timer and performs related UI/database operations.
+    ///
+    /// This is a high-level orchestration function that:
+    /// 1. Sends a desktop notification with the formatted timer duration
+    /// 2. Creates a `Timer` instance with the specified Arguments
+    /// 3. Closes the popup window
+    /// 4. Clears the power controls form
+    /// 5. Asynchronously inserts the timer into the database
+    ///
+    /// Returns a batched `Task` containing all these operations. If the database
+    /// is not yet initialized, returns `Task::none()` and logs an error.
+    ///
+    /// # Arguments
+    ///
+    /// - `time`: Duration in seconds
+    /// - `timer_type`: Type of power operation (Suspend, Shutdown, etc.)
+    /// - `notification_title`: Title for the desktop notification
+    /// - `notification_body_prefix`: Text prefix before the duration (e.g., "Suspending in")
+    /// - `icon`: Icon name for the notification
     fn create_power_timer(
         &mut self,
         time: i32,
@@ -283,7 +338,25 @@ impl AppModel {
         ])
     }
 
-    /// Toggles the main panel visibility.
+    /// Toggles the applet popup window open or closed.
+    ///
+    /// If a popup is currently open, it will be closed. If no popup exists,
+    /// a new one will be created with the configured size (500×500 default)
+    /// and minimum dimensions (300×150).
+    ///
+    /// The popup position is automatically determined by the panel location
+    /// (top, bottom, left, or right) via `get_popup_settings()`.
+    ///
+    /// # Test Context Behavior
+    ///
+    /// In test environments where no main window ID exists, the popup state
+    /// is still tracked in `self.popup`, but no actual window task is generated.
+    /// This allows testing popup logic without requiring a full GUI context.
+    ///
+    /// # Returns
+    ///
+    /// A `Task` that will create or destroy the popup window, or `Task::none()`
+    /// if running in a test context without a main window.
     fn toggle_popup(&mut self) -> Task<Message> {
         if let Some(p) = self.popup.take() {
             // Close the popup if it is open.
@@ -311,6 +384,29 @@ impl AppModel {
         }
     }
 
+    /// Processes expired timers on each tick of the subscription interval.
+    ///
+    /// Called every second by the tick subscription to check for completed timers.
+    /// For each expired timer, this function:
+    /// 1. Determines the timer type (power operation or user-defined)
+    /// 2. Executes the appropriate action (system command or notification)
+    /// 3. Removes the timer from the active list
+    /// 4. Schedules database deletion
+    ///
+    /// Power operation timers trigger system actions (suspend, shutdown, logout, reboot)
+    /// via the power management message flow. User-defined timers show a desktop
+    /// notification with the timer description.
+    ///
+    /// # Implementation Note
+    ///
+    /// Database deletions are processed one per tick to avoid concurrent deletion
+    /// conflicts. Since ticks occur every second and sqlite database operations are fast,
+    /// this trade-off is prefereable to batching multiple deletions at once.
+    ///  How often will we be processing multiple timers expiring simultaneously anyway?
+    ///
+    /// # Returns
+    ///
+    /// A batched `Task` containing all scheduled operations for this tick.
     fn handle_tick(&mut self) -> Task<Action<Message>> {
         let mut tasks: Vec<Task<Action<Message>>> = vec![];
 
@@ -385,14 +481,27 @@ impl AppModel {
         Task::batch(tasks)
     }
 
-    /// Handle messages from pages
-    // Todo: If necessary, expand to route to multiple pages
-    // Handle messages from the power controls page
+    /// Routes power controls page messages to the appropriate handler.
+    ///
+    /// This function translates page-level messages from the power controls UI
+    /// into app-level power management messages. Most messages are forwarded
+    /// directly to `handle_power_message()`, while component-specific messages
+    /// are passed to the page's update method.
+    ///
+    /// # Current Routing
+    ///
+    /// - Timer creation messages → `handle_power_message()`
+    /// - Stay awake toggle → `handle_power_message()`
+    /// - Component messages → `power_controls.update()`
+    ///
+    /// # Future Expansion
+    ///
+    /// If additional pages are added (reminders, systemd timers), this pattern
+    /// can be extended with similar routing functions for each page type.
     fn handle_power_controls_message(
         &mut self,
         msg: power_controls::Message,
     ) -> Task<Action<Message>> {
-        // Check if this is a message that needs to be handled at the app level
         match msg {
             power_controls::Message::ToggleStayAwake => {
                 self.handle_power_message(PowerMessage::ToggleStayAwake)
@@ -423,6 +532,18 @@ impl AppModel {
         }
     }
 
+    /// Handles database-related messages.
+    ///
+    /// This function processes messages related to database initialization, CRUD operations, and error handling.
+    /// These are app level messages exclusive to the database layer.
+    ///
+    /// # Arguments
+    ///
+    /// - `msg`: The database message to handle.
+    ///
+    /// # Returns
+    ///
+    /// A task representing the action to be performed.
     fn handle_database_message(&mut self, msg: DatabaseMessage) -> Task<Action<Message>> {
         match msg {
             DatabaseMessage::Initialized(result) => {
@@ -455,6 +576,19 @@ impl AppModel {
         Task::none()
     }
 
+    /// Handles timer-related messages.
+    ///
+    /// This function processes messages related to timer creation and fetching active timers.
+    /// This is app level messages exclusive to timer creation and management.
+    /// This is not where the timer ticks are handled as that is done with a subscription, not message.
+    ///
+    /// # Arguments
+    ///
+    /// - `msg`: The timer message to handle.
+    ///
+    /// # Returns
+    ///
+    /// Task representing the action to be performed.
     fn handle_timer_message(&mut self, msg: TimerMessage) -> Task<Action<Message>> {
         match msg {
             TimerMessage::Created(result) => match result {
@@ -478,6 +612,16 @@ impl AppModel {
         Task::none()
     }
 
+    /// Handles power management messages.
+    ///
+    /// This function processes messages related to power management actions such as toggling stay-awake mode, sleeping, and rebooting.
+    /// These are app level messages that trigger system power operations.
+    ///
+    /// # Arguments
+    /// - `msg`: The power message to handle.
+    ///
+    /// # Returns
+    /// Task representing the action to be performed.
     #[allow(clippy::too_many_lines)]
     fn handle_power_message(&mut self, msg: PowerMessage) -> Task<Action<Message>> {
         // let _ = self.power_controls.update(&msg);
@@ -485,7 +629,6 @@ impl AppModel {
             PowerMessage::ToggleStayAwake => {
                 if let Some(inhibitor) = self.suspend_inhibitor.take() {
                     resources::release_suspend_inhibit(inhibitor);
-                    println!("Released suspend inhibitor");
                 } else {
                     return AppModel::get_suspend_inhibitor();
                 }
@@ -516,7 +659,6 @@ impl AppModel {
                 }
             }
             PowerMessage::SetSuspendTime(time) => {
-                // We create a suspend inhibitor when setting a suspend timer so the timer overrides system settings
                 let _inhibitor_task = AppModel::get_suspend_inhibitor();
 
                 return self.create_power_timer(
@@ -616,6 +758,15 @@ impl AppModel {
         Task::none()
     }
 
+    /// Acquires a suspend inhibitor asynchronously.
+    ///
+    /// This prevents the system from falling asleep without overriding user settings. It uses zbus to request a suspend inhibit, relying on the logind service.
+    /// We use arc to wrap the result so it can be sent across thread boundaries safely and ensure there's only one active reference at a time.
+    /// It's a file descriptor under the hood so we need to keep it alive as long as we want to prevent sleep.
+    ///
+    /// # Returns
+    ///
+    /// A Task that resolves to an Action containing the result of the inhibitor acquisition.
     fn get_suspend_inhibitor() -> Task<Action<Message>> {
         Task::perform(
             async move {

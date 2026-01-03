@@ -1,0 +1,15 @@
+{
+  "lsp": {
+    "rust-analyzer": {
+      "initialization_options": {
+        "diagnostics": {
+          "disabled": [
+            "unresolved-proc-macro",
+            "macro-error",
+            "macro-backtrace",
+          ],
+        },
+      },
+    },
+  },
+}

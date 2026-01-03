@@ -349,12 +349,10 @@ This project is a **learning exercise**. When assisting:
 ## Resources
 
 ### Project Documentation
-- **Architectural Idioms:** `.github/architectural-idioms.md` - Component-to-page message flow and other patterns
-- **Flatpak Notes:** `.github/flatpak.md` - Future Flatpak support plans (v2)
-- **UI Spacing Guide:** `.github/ui-spacing-guide.md`
-- **Iterator Patterns:** `.github/iterator-patterns.md`
-- **Icon Theming Notes:** `.github/icon-theming-notes.md`
-- **Macro Explanations:** `.github/macro-explanations.md`
+- **Architectural Idioms:** `.journal/architectural-idioms.md` - Component-to-page message flow and other patterns
+- **Flatpak Notes:** `.journal/flatpak.md` - Future Flatpak support plans (v2)
+- **Iterator Patterns:** `.journal/iterator-patterns.md`
+- **Doctest Guide:** `.journal/doctest-guide.md` - Writing effective Rust doctests in Chronomancer
 
 ### External Documentation
 - **libcosmic Applets:** https://pop-os.github.io/libcosmic-book/panel-applets.html
@@ -370,8 +368,8 @@ This project is a **learning exercise**. When assisting:
 # Build release version
 just
 
-# Run the application
-just run
+# Run the dev application
+just dev
 
 # Check for errors
 just check
@@ -396,6 +394,52 @@ For v1, use standard installation methods above.
 - **Unit Tests:** Test services independently with mocked dependencies
 - **Integration Tests:** Mock systemd D-Bus interface
 - **Manual Testing:** All four panel positions, light/dark themes, system sleep/wake cycles
+
+## Documentation & Doctests
+
+### Policy: Doctests for Logic, Prose for GUI
+
+**✅ DO write doctests for:**
+- Pure utility functions (`utils/filters.rs`, `utils/time.rs`, `utils/resources.rs`)
+- Logic that can be tested with simple assertions
+- Functions that return testable values
+
+```rust
+/// ```rust
+/// use chronomancer::utils::filters::filter_positive_integer;
+/// assert_eq!(filter_positive_integer("42"), Some("42".to_string()));
+/// assert_eq!(filter_positive_integer("0"), None);
+/// ```
+```
+
+**❌ DON'T write doctests for:**
+- UI components (`components/**`)
+- Widget layouts and cosmic integrations
+- Anything requiring `Element`, `Message` enums, or widget macros
+
+Instead, use **prose descriptions**:
+```rust
+/// Icon-based radio button that changes style when active.
+///
+/// Create with `new(index, icon_name)`, render with `view(is_active, message)`.
+```
+
+### Rationale
+
+- **Panel applet, not a library:** The working app IS the documentation
+- **Reduce friction:** GUI boilerplate slows development without adding value
+- **Focus on learning:** Time spent on examples is better spent building features
+- **Test what matters:** Pure functions benefit from doctests; UI patterns don't
+
+### Running Tests
+
+```bash
+cargo test          # All tests (unit + integration + doctests)
+cargo test --doc    # Only doctests (~53 passing for utils)
+cargo test --lib    # Only unit tests
+```
+
+See `.github/doctest-guide.md` for detailed doctest usage patterns.
 
 ## Data Storage
 
