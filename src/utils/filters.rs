@@ -126,12 +126,19 @@ pub fn filter_positive_integer(input: &str) -> Option<String> {
 ///
 /// // All non-alphabetic removed
 /// assert_eq!(filter_alphabetic("123!@#"), Some("".to_string()));
+///
+/// // all characters filtered out returns None
+/// assert_eq!(filter_alphabetic("123!@#"), None);
 /// ```
 #[must_use]
 #[allow(dead_code)]
 pub fn filter_alphabetic(input: &str) -> Option<String> {
     let filtered: String = input.chars().filter(|c| c.is_alphabetic()).collect();
-    Some(filtered)
+    if filtered.is_empty() {
+        None
+    } else {
+        Some(filtered)
+    }
 }
 
 /// Filters input to only allow alphanumeric characters.
@@ -152,10 +159,17 @@ pub fn filter_alphabetic(input: &str) -> Option<String> {
 /// assert_eq!(filter_alphanumeric("Hello123"), Some("Hello123".to_string()));
 /// assert_eq!(filter_alphanumeric("Hello 123!"), Some("Hello123".to_string()));
 /// assert_eq!(filter_alphanumeric("user_name"), Some("username".to_string()));
-/// ```
+///
+/// // all characters filtered out returns None
+/// assert_eq!(filter_alphanumeric("!@#"), None);
+///  ```
 #[must_use]
 #[allow(dead_code)]
 pub fn filter_alphanumeric(input: &str) -> Option<String> {
     let filtered: String = input.chars().filter(|c| c.is_alphanumeric()).collect();
-    Some(filtered)
+    if filtered.is_empty() {
+        None
+    } else {
+        Some(filtered)
+    }
 }

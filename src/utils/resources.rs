@@ -242,7 +242,7 @@ pub fn release_suspend_inhibit(file: File) {
 /// to the "Suspend" or "Sleep" option in system menus.
 ///
 /// **Note**: This requires appropriate permissions. The system may prompt the
-/// user for authentication depending on PolicyKit configuration.
+/// user for authentication depending on `PolicyKit` configuration.
 ///
 /// # Returns
 ///
@@ -304,7 +304,7 @@ pub async fn execute_system_suspend() -> Result<()> {
 /// saved before calling this function.
 ///
 /// **Note**: This requires appropriate permissions. The system may prompt the
-/// user for authentication depending on PolicyKit configuration.
+/// user for authentication depending on `PolicyKit` configuration.
 ///
 /// # Returns
 ///
@@ -432,7 +432,7 @@ pub async fn execute_system_logout() -> Result<()> {
 /// saved before calling this function.
 ///
 /// **Note**: This requires appropriate permissions. The system may prompt the
-/// user for authentication depending on PolicyKit configuration.
+/// user for authentication depending on `PolicyKit` configuration.
 ///
 /// # Returns
 ///

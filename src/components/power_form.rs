@@ -137,7 +137,7 @@ impl PowerOperation {
     ///
     /// # Icon Names
     ///
-    /// - StayAwake: `"io.vulpapps.Chronomancer-stay-awake"` (custom)
+    /// - `StayAwake`: `"io.vulpapps.Chronomancer-stay-awake"` (custom)
     /// - Suspend: `"system-suspend-symbolic"`
     /// - Logout: `"system-log-out-symbolic"`
     /// - Reboot: `"system-reboot-symbolic"`

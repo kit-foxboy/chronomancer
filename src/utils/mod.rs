@@ -6,7 +6,7 @@
 //!
 //! # Organization
 //!
-//! - [`database`] - Database abstractions and SQLite implementation
+//! - [`database`] - Database abstractions and `SQLite` implementation
 //! - [`filters`] - Text input validation and filtering functions
 //! - [`resources`] - System icons and power management (D-Bus integration)
 //! - [`time`] - Time unit conversion and duration formatting
