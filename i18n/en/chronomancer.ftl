@@ -5,6 +5,7 @@ view = View
 welcome = Welcome to COSMIC! ✨
 page-id = Page { $num }
 git-description = Git commit {$hash} on {$date}
+title-timers = Timers
 seconds = Seconds
 minutes = Minutes
 hours = Hours

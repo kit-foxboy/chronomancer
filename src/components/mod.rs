@@ -6,6 +6,13 @@
 //!
 //! # Component Categories
 //!
+//! ## List Components
+//!
+//! - [`ListHeader`] - Header component for list sections with title and optional action button
+//! - ['ListHeaderForm'] - Form for of ListHeader for embedding input fields
+//! - ['List'] - Generic list component for displaying collections of items
+//! - ['ListItem'] - Individual item component for use within ElementList
+//!
 //! ## Input Components
 //!
 //! - [`PowerForm`] - Time duration input form with unit selection and validation
@@ -32,6 +39,7 @@
 //! 4. **Documented** - Each component and method includes arguments, return values, and possible errors. Jury is still out on whether or not these will end up being doctests
 
 pub mod icon_button;
+pub mod list_header;
 pub mod power_form;
 pub mod radio_components;
 

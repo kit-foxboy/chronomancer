@@ -20,28 +20,40 @@
 //!
 //! ## Examples
 //!
-//! Page-level messages convert automatically to app-level:
+//! Page-level messages convert automatically to app-level messages:
 //!
 //! ```rust
-//! use chronomancer::{app_messages::AppMessage, pages::power_controls};
+//! use chronomancer::{app_messages::AppMessage, pages::{PageMessage, power_controls}};
 //!
+//! // Direct conversion from page message to app message
 //! let page_msg = power_controls::Message::ToggleStayAwake;
 //! let app_msg: AppMessage = page_msg.into();
 //!
 //! // Verify the conversion preserves the message type
 //! match app_msg {
-//!     AppMessage::PowerControlsMessage(power_controls::Message::ToggleStayAwake) => {
-//!         // Message was correctly wrapped
+//!     AppMessage::PageMessage(PageMessage::PowerControlsMessage(
+//!         power_controls::Message::ToggleStayAwake
+//!     )) => {
+//!         // Message was correctly wrapped through PageMessage
 //!     }
 //!     _ => panic!("Conversion failed"),
 //! }
 //! ```
+//!
+//! In view functions, this enables clean message mapping:
+//!
+//! ```rust,ignore
+//! // Clean syntax using Into trait
+//! let power_view = self.power_controls.view().map(Into::into);
+//!
+//! // Instead of verbose explicit wrapping:
+//! // self.power_controls.view()
+//! //     .map(|msg| Message::PageMessage(PageMessage::PowerControlsMessage(msg)))
+//! ```
 
 use std::{fs::File, sync::Arc};
 
-use crate::{
-    config::Config, models::Timer, pages::power_controls, utils::database::SQLiteDatabase,
-};
+use crate::{config::Config, models::Timer, pages::PageMessage, utils::database::SQLiteDatabase};
 
 /// Messages related to database operations.
 ///
@@ -109,8 +121,8 @@ pub enum AppMessage {
     UpdateConfig(Config),
     /// Regular tick for timer countdown updates (fires every second)
     Tick,
-    /// Message from the power controls page (auto-converted via From trait)
-    PowerControlsMessage(power_controls::Message),
+    /// Message from any page (power controls, timer list, etc.)
+    PageMessage(PageMessage),
     /// Message from database operations
     DatabaseMessage(DatabaseMessage),
     /// Message from timer operations
@@ -119,13 +131,33 @@ pub enum AppMessage {
     PowerMessage(PowerMessage),
 }
 
-/// Automatic conversion from power controls page messages to app messages.
+/// Automatic conversion from page messages to app messages.
 ///
 /// Allows pages to return their own message types which are seamlessly converted
 /// to `AppMessage` when passed up to the app's `update()` method. This keeps
-/// page code decoupled from app-level concerns and lets us write messasge agnostic view and update functionsS.
-impl From<power_controls::Message> for AppMessage {
-    fn from(msg: power_controls::Message) -> Self {
-        AppMessage::PowerControlsMessage(msg)
+/// page code decoupled from app-level concerns and lets us write message agnostic view and update functions.
+impl From<PageMessage> for AppMessage {
+    fn from(msg: PageMessage) -> Self {
+        AppMessage::PageMessage(msg)
+    }
+}
+
+/// Automatic conversion from power controls messages to app messages.
+///
+/// This enables the convenient `.map(Into::into)` syntax in view functions.
+/// The conversion chain is: `power_controls::Message` -> `PageMessage` -> `AppMessage`.
+impl From<crate::pages::PowerControlsMessage> for AppMessage {
+    fn from(msg: crate::pages::PowerControlsMessage) -> Self {
+        AppMessage::PageMessage(PageMessage::PowerControlsMessage(msg))
+    }
+}
+
+/// Automatic conversion from timer list messages to app messages.
+///
+/// This enables the convenient `.map(Into::into)` syntax in view functions.
+/// The conversion chain is: `timer_list::Message` -> `PageMessage` -> `AppMessage`.
+impl From<crate::pages::TimerListMessage> for AppMessage {
+    fn from(msg: crate::pages::TimerListMessage) -> Self {
+        AppMessage::PageMessage(PageMessage::TimerListMessage(msg))
     }
 }

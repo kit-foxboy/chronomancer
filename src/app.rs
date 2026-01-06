@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: MIT
-
 use cosmic::{
     Action, Application, Core, Element, Task, applet,
     cosmic_config::{self, CosmicConfigEntry},
@@ -20,7 +19,7 @@ use crate::{
     app_messages::{AppMessage as Message, DatabaseMessage, PowerMessage, TimerMessage},
     config::Config,
     models::{Timer, timer::TimerType},
-    pages::{PowerControls, power_controls},
+    pages::{PageMessage, PowerControls, TimerList, power_controls},
     utils::{
         database::{Repository, SQLiteDatabase},
         format_duration, resources,
@@ -53,8 +52,10 @@ pub struct AppModel {
     suspend_inhibitor: Option<File>,
     /// Active timers
     active_timers: Vec<Timer>,
-    /// Power control component
+    /// Power control page
     power_controls: PowerControls,
+    /// Timer list page
+    timer_list: TimerList,
 }
 
 /// Create a COSMIC application from the app model
@@ -104,6 +105,7 @@ impl Application for AppModel {
             suspend_inhibitor: None,
             active_timers: vec![],
             power_controls: PowerControls::default(),
+            timer_list: TimerList::default(),
         };
 
         (
@@ -135,13 +137,17 @@ impl Application for AppModel {
     /// An `Element` representing the window content.
     fn view_window(&self, id: window::Id) -> Element<'_, Message> {
         if matches!(self.popup, Some(p) if p == id) {
+            // Todo: use utils spacing and size constants
             let Spacing { space_m, .. } = theme::active().cosmic().spacing;
 
-            let power = self
-                .power_controls
-                .view()
-                .map(Message::PowerControlsMessage);
-            let content = column![power]
+            // Map page messages to app messages using Into trait
+            // Conversion chain: power_controls::Message -> PageMessage -> AppMessage
+            let power = self.power_controls.view().map(Into::into);
+
+            // Conversion chain: timer_list::Message -> PageMessage -> AppMessage
+            let timer_list = self.timer_list.view().map(Into::into);
+
+            let content = column![power, timer_list]
                 .spacing(space_m)
                 .align_x(Alignment::Center)
                 .width(Length::Fill);
@@ -197,7 +203,13 @@ impl Application for AppModel {
                 t.map(|_| Action::<Message>::None)
             }
 
-            Message::PowerControlsMessage(msg) => self.handle_power_controls_message(msg),
+            Message::PageMessage(PageMessage::PowerControlsMessage(msg)) => {
+                self.handle_power_controls_message(msg)
+            }
+
+            Message::PageMessage(PageMessage::TimerListMessage(_msg)) => {
+                Task::none() // Todo: handle timer list messages at app level
+            }
 
             Message::DatabaseMessage(msg) => self.handle_database_message(msg),
 
@@ -324,8 +336,8 @@ impl AppModel {
         // Batch all the tasks
         Task::batch(vec![
             close_task.map(|_| Action::None),
-            Task::done(Action::App(Message::PowerControlsMessage(
-                power_controls::Message::ClearForm,
+            Task::done(Action::App(Message::PageMessage(
+                PageMessage::PowerControlsMessage(power_controls::Message::ClearForm),
             ))),
             Task::perform(
                 async move {
@@ -524,7 +536,9 @@ impl AppModel {
             }
             // Let the page handle its own state updates
             _ => self.power_controls.update(msg).map(|action| match action {
-                Action::App(page_msg) => Action::App(Message::PowerControlsMessage(page_msg)),
+                Action::App(page_msg) => Action::App(Message::PageMessage(
+                    PageMessage::PowerControlsMessage(page_msg),
+                )),
                 Action::None => Action::None,
                 Action::Cosmic(cosmic_action) => Action::Cosmic(cosmic_action),
                 Action::DbusActivation(dbus_action) => Action::DbusActivation(dbus_action),
@@ -1175,7 +1189,7 @@ mod tests {
         let mut app = get_test_app();
 
         let msg = power_controls::Message::FormTextChanged("20".to_string());
-        let _task = app.update(Message::PowerControlsMessage(msg));
+        let _task = app.update(Message::PageMessage(PageMessage::PowerControlsMessage(msg)));
 
         // The message is forwarded to power_controls.update()
         // We can't easily verify internal state without exposing it,
