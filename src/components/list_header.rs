@@ -9,7 +9,7 @@
 
 use cosmic::Element;
 
-/// Messages emitted by the ListHeader component.
+/// Messages emitted by the `ListHeader` component.
 #[derive(Debug, Clone)]
 pub enum Message {
     AddButtonPressed,
@@ -24,7 +24,7 @@ pub struct ListHeader {
 }
 
 impl ListHeader {
-    /// Creates a new ListHeader with the specified title and add button option.
+    /// Creates a new `ListHeader` with the specified title and add button option.
     ///
     /// # Arguments
     ///
@@ -37,11 +37,12 @@ impl ListHeader {
         }
     }
 
-    /// Returns the visual representation of the ListHeader as an Element.
+    /// Returns the visual representation of the `ListHeader` as an Element.
     ///
     /// # Returns
     ///
-    /// An Element representing the ListHeader component.
+    /// An Element representing the `ListHeader` component.
+    #[must_use]
     pub fn view(&self) -> Element<'_, Message> {
         use crate::utils::ui::Padding;
         use cosmic::{
@@ -61,7 +62,8 @@ impl ListHeader {
                 .push(
                     button::icon(icon::from_name("list-add-symbolic"))
                         .class(Icon)
-                        .extra_small(), // Compact size for applet
+                        .extra_small() // Compact size for applet
+                        .on_press(Message::AddButtonPressed),
                 );
         }
 

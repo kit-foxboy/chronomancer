@@ -2,117 +2,85 @@
 
 //! Application message types for the Chronomancer panel applet.
 //!
-//! This module defines the message hierarchy used throughout the application.
-//! We follow the Model-View-Update (MVU) architecture in libcosmic's documentation while
-//! adapting it tho have a clear separation between UI pages and service layer operations.
-//! Messages flow from UI interactions down to service layer operations and back
-//! up as results. The main `AppMessage` enum dispatches to specialized message
-//! types for logically divided subsystems (database, power management, timers, pages).
+//! This module defines the top-level message type used throughout the application.
+//! We follow the Model-View-Update (MVU) architecture from libcosmic's documentation,
+//! with messages organized in their respective modules (pages, models, utils) and
+//! automatically converted to `AppMessage` via the `From` trait.
 //!
 //! ## Message Flow Pattern
 //!
 //! 1. User interacts with UI (button click, text input)
-//! 2. Page generates a page-specific message (e.g., `power_controls::Message`)
-//! 3. Page converts to `AppMessage` via `From` trait
+//! 2. Component/page generates a module-specific message
+//! 3. Message converts to `AppMessage` via `From` trait (automatic with `.map(Into::into)`)
 //! 4. App's `update()` method routes to appropriate handler
-//! 5. Handler performs async work, returns result as new message
+//! 5. Handler performs work, returns result as new message
 //! 6. UI updates based on result message
+//!
+//! ## Architecture
+//!
+//! Messages are **decentralized** as per libcosmic examples - each module owns its message types:
+//! - **Page messages**: `pages::PowerControlsMessage`, `pages::TimerListMessage`
+//! - **Service messages**: `utils::power::PowerMessage`, `utils::database::DatabaseMessage`
+//! - **Model messages**: `models::timer::TimerMessage`
+//!
+//! All convert cleanly to `AppMessage` through a predictable chain:
+//! - Page messages: `page::Message` → `PageMessage` → `AppMessage`
+//! - Service messages: `service::Message` → `AppMessage`
 //!
 //! ## Examples
 //!
-//! Page-level messages convert automatically to app-level messages:
+//! ### Automatic Conversion in View Functions
+//!
+//! ```rust,ignore
+//! // Clean syntax using Into trait - no manual wrapping needed
+//! let power_view = self.power_controls.view().map(Into::into);
+//! let timer_view = self.timer_list.view().map(Into::into);
+//! ```
+//!
+//! ### Message Type Conversions
 //!
 //! ```rust
-//! use chronomancer::{app_messages::AppMessage, pages::{PageMessage, power_controls}};
+//! use chronomancer::{app_messages::AppMessage, pages::{PageMessage, PowerControlsMessage}};
 //!
-//! // Direct conversion from page message to app message
-//! let page_msg = power_controls::Message::ToggleStayAwake;
+//! // Page message converts through PageMessage wrapper
+//! let page_msg = PowerControlsMessage::ToggleStayAwake;
 //! let app_msg: AppMessage = page_msg.into();
 //!
-//! // Verify the conversion preserves the message type
+//! // Verify the conversion chain
 //! match app_msg {
-//!     AppMessage::PageMessage(PageMessage::PowerControlsMessage(
-//!         power_controls::Message::ToggleStayAwake
+//!     AppMessage::Page(PageMessage::PowerControlsMessage(
+//!         PowerControlsMessage::ToggleStayAwake
 //!     )) => {
-//!         // Message was correctly wrapped through PageMessage
+//!         // Message was correctly wrapped
 //!     }
 //!     _ => panic!("Conversion failed"),
 //! }
 //! ```
-//!
-//! In view functions, this enables clean message mapping:
-//!
-//! ```rust,ignore
-//! // Clean syntax using Into trait
-//! let power_view = self.power_controls.view().map(Into::into);
-//!
-//! // Instead of verbose explicit wrapping:
-//! // self.power_controls.view()
-//! //     .map(|msg| Message::PageMessage(PageMessage::PowerControlsMessage(msg)))
-//! ```
 
-use std::{fs::File, sync::Arc};
+use crate::config::Config;
 
-use crate::{config::Config, models::Timer, pages::PageMessage, utils::database::SQLiteDatabase};
-
-/// Messages related to database operations.
-///
-/// These messages represent the lifecycle of database initialization and results
-/// from database queries. The database is initialized asynchronously on app startup.
-#[derive(Debug, Clone)]
-pub enum DatabaseMessage {
-    /// Database successfully initialized with the given connection
-    Initialized(Result<SQLiteDatabase, String>),
-    /// Database initialization failed with an error message
-    FailedToInitialize(String),
-}
-
-/// Messages related to power management operations.
-///
-/// Handles stay-awake inhibit locks, timed power operations (suspend, logout,
-/// shutdown, reboot), and immediate execution of those operations. Inhibit
-/// locks prevent the system from sleeping while active without overriding user settings.
-#[derive(Debug, Clone)]
-pub enum PowerMessage {
-    /// Toggle the stay-awake inhibit lock on/off
-    ToggleStayAwake,
-    /// Result of acquiring a systemd inhibit lock (wrapped in Arc for cheap cloning)
-    InhibitAcquired(Arc<Result<File, String>>),
-    /// Schedule a suspend operation after the given number of seconds
-    SetSuspendTime(i32),
-    /// Schedule a logout operation after the given number of seconds
-    SetLogoutTime(i32),
-    /// Schedule a shutdown operation after the given number of seconds
-    SetShutdownTime(i32),
-    /// Schedule a reboot operation after the given number of seconds
-    SetRebootTime(i32),
-    /// Immediately execute a system suspend
-    ExecuteSuspend,
-    /// Immediately execute a user logout
-    ExecuteLogout,
-    /// Immediately execute a system shutdown
-    ExecuteShutdown,
-    /// Immediately execute a system reboot
-    ExecuteReboot,
-}
-
-/// Messages related to timer operations.
-///
-/// Represents results from timer creation and retrieval operations. Timers
-/// are stored in the database and tracked for countdown display and notifications.
-#[derive(Debug, Clone)]
-pub enum TimerMessage {
-    /// Result of creating a new timer (contains the created Timer on success)
-    Created(Result<Timer, String>),
-    /// Result of fetching all active timers from the database
-    ActiveFetched(Result<Vec<Timer>, String>),
-}
+// Re-export message types for convenient importing throughout the app
+pub use crate::{
+    models::timer::TimerMessage,
+    pages::PageMessage,
+    utils::{database::DatabaseMessage, power::PowerMessage},
+};
 
 /// Top-level application messages that coordinate all subsystems.
 ///
 /// This is the main message type handled by the app's `update()` method. It
-/// dispatches to specialized handlers based on message category. Page-specific
-/// messages are automatically converted via the `From` trait implementations.
+/// dispatches to specialized handlers based on message category. All module-specific
+/// messages are automatically converted to `AppMessage` via `From` trait implementations.
+///
+/// # Message Categories
+///
+/// - **`TogglePopup`**: UI control for showing/hiding the applet popup
+/// - **`UpdateConfig`**: Persistence operations for app configuration
+/// - **`Tick`**: Regular timer updates (every second via subscription)
+/// - **`Page`**: Messages from UI pages (power controls, timer list, etc.)
+/// - **`Database`**: Database lifecycle and query results
+/// - **`Timer`**: Timer creation and retrieval results
+/// - **`Power`**: Power management operations (suspend, shutdown, inhibitors)
 #[derive(Debug, Clone)]
 pub enum AppMessage {
     /// Toggle the applet's popup window open/closed
@@ -122,42 +90,51 @@ pub enum AppMessage {
     /// Regular tick for timer countdown updates (fires every second)
     Tick,
     /// Message from any page (power controls, timer list, etc.)
-    PageMessage(PageMessage),
+    Page(PageMessage),
     /// Message from database operations
-    DatabaseMessage(DatabaseMessage),
+    Database(DatabaseMessage),
     /// Message from timer operations
-    TimerMessage(TimerMessage),
+    Timer(TimerMessage),
     /// Message from power management operations
-    PowerMessage(PowerMessage),
+    Power(PowerMessage),
 }
 
 /// Automatic conversion from page messages to app messages.
 ///
 /// Allows pages to return their own message types which are seamlessly converted
 /// to `AppMessage` when passed up to the app's `update()` method. This keeps
-/// page code decoupled from app-level concerns and lets us write message agnostic view and update functions.
+/// page code decoupled from app-level concerns. This keeps us from some ugly ass syntax with highly nested enums.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// // In a view function, this just works:
+/// self.power_controls.view().map(Into::into)
+/// // Compiler automatically uses: PageMessage → AppMessage
+/// ```
 impl From<PageMessage> for AppMessage {
     fn from(msg: PageMessage) -> Self {
-        AppMessage::PageMessage(msg)
+        AppMessage::Page(msg)
     }
 }
 
-/// Automatic conversion from power controls messages to app messages.
-///
-/// This enables the convenient `.map(Into::into)` syntax in view functions.
-/// The conversion chain is: `power_controls::Message` -> `PageMessage` -> `AppMessage`.
-impl From<crate::pages::PowerControlsMessage> for AppMessage {
-    fn from(msg: crate::pages::PowerControlsMessage) -> Self {
-        AppMessage::PageMessage(PageMessage::PowerControlsMessage(msg))
+/// Automatic conversion from database messages to app messages.
+impl From<DatabaseMessage> for AppMessage {
+    fn from(msg: DatabaseMessage) -> Self {
+        AppMessage::Database(msg)
     }
 }
 
-/// Automatic conversion from timer list messages to app messages.
-///
-/// This enables the convenient `.map(Into::into)` syntax in view functions.
-/// The conversion chain is: `timer_list::Message` -> `PageMessage` -> `AppMessage`.
-impl From<crate::pages::TimerListMessage> for AppMessage {
-    fn from(msg: crate::pages::TimerListMessage) -> Self {
-        AppMessage::PageMessage(PageMessage::TimerListMessage(msg))
+/// Automatic conversion from timer messages to app messages.
+impl From<TimerMessage> for AppMessage {
+    fn from(msg: TimerMessage) -> Self {
+        AppMessage::Timer(msg)
+    }
+}
+
+/// Automatic conversion from power messages to app messages.
+impl From<PowerMessage> for AppMessage {
+    fn from(msg: PowerMessage) -> Self {
+        AppMessage::Power(msg)
     }
 }

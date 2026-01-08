@@ -19,8 +19,8 @@ pub enum Message {
 /// Struct representing the timer list page
 ///
 /// This page displays a list of timers with options to add, pause, resume, delete, and toggle recurring status.
-/// It uses the ListHeader component for the header section, the List component for displaying timers,
-/// and the ListForm component for adding new timers.
+/// It uses the `ListHeader` component for the header section, the `List` component for displaying timers,
+/// and the `ListForm` component for adding new timers.
 pub struct Page {
     list_header: ListHeader,
 }
@@ -53,5 +53,29 @@ impl Page {
         self.list_header.view().map(Message::ListHeaderMessage)
     }
 
-    // TODO: Add update method to handle messages and update state accordingly
+    pub fn update(&self, message: Message) {
+        match message {
+            Message::ListHeaderMessage(msg) => match msg {
+                ListHeaderMessage::AddButtonPressed => {
+                    // Handle add button pressed
+                    println!("Add button pressed");
+                }
+            },
+            Message::TimerFormSubmitted => {
+                // Handle timer form submission
+            }
+            Message::PauseTimer(_index) => {
+                // Handle pausing timer at index
+            }
+            Message::ResumeTimer(_index) => {
+                // Handle resuming timer at index
+            }
+            Message::DeleteTimer(_index) => {
+                // Handle deleting timer at index
+            }
+            Message::ToggleRecurring(_index) => {
+                // Handle toggling recurring status of timer at index
+            }
+        }
+    }
 }

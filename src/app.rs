@@ -16,10 +16,12 @@ use notify_rust::{Hint, Notification};
 use std::{fs::File, str::FromStr, sync::Arc};
 
 use crate::{
-    app_messages::{AppMessage as Message, DatabaseMessage, PowerMessage, TimerMessage},
+    app_messages::{
+        AppMessage as Message, DatabaseMessage, PageMessage, PowerMessage, TimerMessage,
+    },
     config::Config,
     models::{Timer, timer::TimerType},
-    pages::{PageMessage, PowerControls, TimerList, power_controls},
+    pages::{PowerControls, TimerList},
     utils::{
         database::{Repository, SQLiteDatabase},
         format_duration, resources,
@@ -113,12 +115,10 @@ impl Application for AppModel {
             Task::perform(
                 async move { SQLiteDatabase::new().await.map_err(|e| e.to_string()) },
                 |result| match result {
-                    Ok(db) => Action::App(Message::DatabaseMessage(DatabaseMessage::Initialized(
-                        Ok(db),
-                    ))),
-                    Err(err) => Action::App(Message::DatabaseMessage(
-                        DatabaseMessage::FailedToInitialize(err),
-                    )),
+                    Ok(db) => Action::App(Message::Database(DatabaseMessage::Initialized(Ok(db)))),
+                    Err(err) => {
+                        Action::App(Message::Database(DatabaseMessage::FailedToInitialize(err)))
+                    }
                 },
             ),
         )
@@ -140,12 +140,19 @@ impl Application for AppModel {
             // Todo: use utils spacing and size constants
             let Spacing { space_m, .. } = theme::active().cosmic().spacing;
 
-            // Map page messages to app messages using Into trait
-            // Conversion chain: power_controls::Message -> PageMessage -> AppMessage
-            let power = self.power_controls.view().map(Into::into);
+            // Map page messages to app messages through PageMessage wrapper
+            // Conversion chain: page::Message -> PageMessage -> AppMessage
+            let power = self
+                .power_controls
+                .view()
+                .map(PageMessage::PowerControlsMessage)
+                .map(Message::Page);
 
-            // Conversion chain: timer_list::Message -> PageMessage -> AppMessage
-            let timer_list = self.timer_list.view().map(Into::into);
+            let timer_list = self
+                .timer_list
+                .view()
+                .map(PageMessage::TimerListMessage)
+                .map(Message::Page);
 
             let content = column![power, timer_list]
                 .spacing(space_m)
@@ -203,19 +210,20 @@ impl Application for AppModel {
                 t.map(|_| Action::<Message>::None)
             }
 
-            Message::PageMessage(PageMessage::PowerControlsMessage(msg)) => {
+            Message::Page(PageMessage::PowerControlsMessage(msg)) => {
                 self.handle_power_controls_message(msg)
             }
 
-            Message::PageMessage(PageMessage::TimerListMessage(_msg)) => {
-                Task::none() // Todo: handle timer list messages at app level
+            Message::Page(PageMessage::TimerListMessage(msg)) => {
+                self.timer_list.update(msg);
+                Task::none()
             }
 
-            Message::DatabaseMessage(msg) => self.handle_database_message(msg),
+            Message::Database(msg) => self.handle_database_message(msg),
 
-            Message::TimerMessage(msg) => self.handle_timer_message(msg),
+            Message::Timer(msg) => self.handle_timer_message(msg),
 
-            Message::PowerMessage(msg) => self.handle_power_message(msg),
+            Message::Power(msg) => self.handle_power_message(msg),
 
             Message::Tick => self.handle_tick(),
 
@@ -336,8 +344,8 @@ impl AppModel {
         // Batch all the tasks
         Task::batch(vec![
             close_task.map(|_| Action::None),
-            Task::done(Action::App(Message::PageMessage(
-                PageMessage::PowerControlsMessage(power_controls::Message::ClearForm),
+            Task::done(Action::App(Message::Page(
+                PageMessage::PowerControlsMessage(crate::pages::PowerControlsMessage::ClearForm),
             ))),
             Task::perform(
                 async move {
@@ -345,7 +353,7 @@ impl AppModel {
                         .await
                         .map_err(|e| e.to_string())
                 },
-                |result| Action::App(Message::TimerMessage(TimerMessage::Created(result))),
+                |result| Action::App(Message::Timer(TimerMessage::Created(result))),
             ),
         ])
     }
@@ -427,23 +435,23 @@ impl AppModel {
                 match TimerType::from_str(&timer.description) {
                     Ok(TimerType::Suspend) => {
                         // Execute system suspend
-                        tasks.push(Task::done(Action::App(Message::PowerMessage(
+                        tasks.push(Task::done(Action::App(Message::Power(
                             PowerMessage::ExecuteSuspend,
                         ))));
                     }
                     Ok(TimerType::Logout) => {
                         // Execute system logout
-                        tasks.push(Task::done(Action::App(Message::PowerMessage(
+                        tasks.push(Task::done(Action::App(Message::Power(
                             PowerMessage::ExecuteLogout,
                         ))));
                     }
                     Ok(TimerType::Shutdown) => {
-                        tasks.push(Task::done(Action::App(Message::PowerMessage(
+                        tasks.push(Task::done(Action::App(Message::Power(
                             PowerMessage::ExecuteShutdown,
                         ))));
                     }
                     Ok(TimerType::Reboot) => {
-                        tasks.push(Task::done(Action::App(Message::PowerMessage(
+                        tasks.push(Task::done(Action::App(Message::Power(
                             PowerMessage::ExecuteReboot,
                         ))));
                     }
@@ -512,37 +520,39 @@ impl AppModel {
     /// can be extended with similar routing functions for each page type.
     fn handle_power_controls_message(
         &mut self,
-        msg: power_controls::Message,
+        message: crate::pages::PowerControlsMessage,
     ) -> Task<Action<Message>> {
-        match msg {
-            power_controls::Message::ToggleStayAwake => {
-                self.handle_power_message(PowerMessage::ToggleStayAwake)
-            }
-            power_controls::Message::SetSuspendTime(time) => {
+        use crate::pages::PowerControlsMessage as PCMessage;
+        match message {
+            PCMessage::ToggleStayAwake => self.handle_power_message(PowerMessage::ToggleStayAwake),
+            PCMessage::SetSuspendTime(time) => {
                 self.handle_power_message(PowerMessage::SetSuspendTime(time))
             }
-            power_controls::Message::SetShutdownTime(time) => {
+            PCMessage::SetShutdownTime(time) => {
                 self.handle_power_message(PowerMessage::SetShutdownTime(time))
             }
-            power_controls::Message::SetLogoutTime(time) => {
+            PCMessage::SetLogoutTime(time) => {
                 self.handle_power_message(PowerMessage::SetLogoutTime(time))
             }
-            power_controls::Message::SetRebootTime(time) => {
+            PCMessage::SetRebootTime(time) => {
                 self.handle_power_message(PowerMessage::SetRebootTime(time))
             }
-            power_controls::Message::ClosePopup => {
+            PCMessage::ClosePopup => {
                 let close_task = self.toggle_popup();
                 close_task.map(|_| Action::None)
             }
             // Let the page handle its own state updates
-            _ => self.power_controls.update(msg).map(|action| match action {
-                Action::App(page_msg) => Action::App(Message::PageMessage(
-                    PageMessage::PowerControlsMessage(page_msg),
-                )),
-                Action::None => Action::None,
-                Action::Cosmic(cosmic_action) => Action::Cosmic(cosmic_action),
-                Action::DbusActivation(dbus_action) => Action::DbusActivation(dbus_action),
-            }),
+            _ => self
+                .power_controls
+                .update(message)
+                .map(|action| match action {
+                    Action::App(page_msg) => {
+                        Action::App(Message::Page(PageMessage::PowerControlsMessage(page_msg)))
+                    }
+                    Action::None => Action::None,
+                    Action::Cosmic(cosmic_action) => Action::Cosmic(cosmic_action),
+                    Action::DbusActivation(dbus_action) => Action::DbusActivation(dbus_action),
+                }),
         }
     }
 
@@ -574,7 +584,7 @@ impl AppModel {
                                     .map_err(|e| e.to_string())
                             },
                             |result| {
-                                Action::App(Message::TimerMessage(TimerMessage::ActiveFetched(
+                                Action::<Message>::App(Message::Timer(TimerMessage::ActiveFetched(
                                     result,
                                 )))
                             },
@@ -793,9 +803,9 @@ impl AppModel {
                 .map_err(|e| e.to_string())
             },
             |result| {
-                Action::<Message>::App(Message::PowerMessage(PowerMessage::InhibitAcquired(
-                    Arc::new(result),
-                )))
+                Action::<Message>::App(Message::Power(PowerMessage::InhibitAcquired(Arc::new(
+                    result,
+                ))))
             },
         )
     }
@@ -912,8 +922,8 @@ mod tests {
     fn test_handle_power_controls_message() {
         let mut app = get_test_app();
 
-        // Create a sample message for PowerControls form text change
-        let msg = power_controls::Message::FormTextChanged("15".to_string());
+        // Create a sample message for PowerControls
+        let msg = crate::pages::PowerControlsMessage::FormTextChanged("15".to_string());
 
         // Handle the message
         let task = app.handle_power_controls_message(msg);
@@ -1034,7 +1044,7 @@ mod tests {
         };
 
         let msg = TimerMessage::Created(Ok(timer.clone()));
-        let _task = app.update(Message::TimerMessage(msg));
+        let _task = app.update(Message::Timer(msg));
 
         // Timer should be added to active timers
         assert_eq!(app.active_timers.len(), 1);
@@ -1046,7 +1056,7 @@ mod tests {
         let mut app = get_test_app();
 
         let msg = TimerMessage::Created(Err("Database error".to_string()));
-        let _task = app.update(Message::TimerMessage(msg));
+        let _task = app.update(Message::Timer(msg));
 
         // No timers should be added
         assert!(app.active_timers.is_empty());
@@ -1076,7 +1086,7 @@ mod tests {
 
         let timers = vec![first_timer.clone(), second_timer.clone()];
         let msg = TimerMessage::ActiveFetched(Ok(timers));
-        let _task = app.update(Message::TimerMessage(msg));
+        let _task = app.update(Message::Timer(msg));
 
         // Active timers should be populated
         assert_eq!(app.active_timers.len(), 2);
@@ -1098,8 +1108,8 @@ mod tests {
             ends_at: chrono::Utc::now().timestamp() + 3600,
         });
 
-        let msg = TimerMessage::ActiveFetched(Err("Fetch failed".to_string()));
-        let _task = app.update(Message::TimerMessage(msg));
+        let msg = TimerMessage::ActiveFetched(Err("Database error".to_string()));
+        let _task = app.update(Message::Timer(msg));
 
         // Existing timers should remain unchanged
         assert_eq!(app.active_timers.len(), 1);
@@ -1109,8 +1119,8 @@ mod tests {
     fn test_handle_database_message_failed_to_initialize() {
         let mut app = get_test_app();
 
-        let msg = DatabaseMessage::FailedToInitialize("Connection error".to_string());
-        let _task = app.update(Message::DatabaseMessage(msg));
+        let msg = DatabaseMessage::FailedToInitialize("Connection refused".to_string());
+        let _task = app.update(Message::Database(msg));
 
         // Database should remain None
         assert!(app.database.is_none());
@@ -1124,7 +1134,7 @@ mod tests {
         assert!(app.suspend_inhibitor.is_none());
 
         // Send ToggleStayAwake message (should acquire inhibitor via task)
-        let _task = app.update(Message::PowerMessage(PowerMessage::ToggleStayAwake));
+        let _task = app.update(Message::Power(PowerMessage::ToggleStayAwake));
 
         // Note: The actual inhibitor acquisition happens in the async task,
         // so we can only verify the task is created, not that inhibitor is set
@@ -1144,8 +1154,8 @@ mod tests {
 
         assert!(app.suspend_inhibitor.is_some());
 
-        // Send ToggleStayAwake message (should release inhibitor)
-        let _task = app.update(Message::PowerMessage(PowerMessage::ToggleStayAwake));
+        // Send ToggleStayAwake message to release inhibitor
+        let _task = app.update(Message::Power(PowerMessage::ToggleStayAwake));
 
         // Inhibitor should be released
         assert!(app.suspend_inhibitor.is_none());
@@ -1163,7 +1173,7 @@ mod tests {
         let file = std::fs::File::create(&temp_file).unwrap();
 
         let msg = PowerMessage::InhibitAcquired(Arc::new(Ok(file)));
-        let _task = app.update(Message::PowerMessage(msg));
+        let _task = app.update(Message::Power(msg));
 
         // Inhibitor should be set
         assert!(app.suspend_inhibitor.is_some());
@@ -1178,7 +1188,7 @@ mod tests {
         let mut app = get_test_app();
 
         let msg = PowerMessage::InhibitAcquired(Arc::new(Err("Failed to acquire".to_string())));
-        let _task = app.update(Message::PowerMessage(msg));
+        let _task = app.update(Message::Power(msg));
 
         // Inhibitor should remain None
         assert!(app.suspend_inhibitor.is_none());
@@ -1187,9 +1197,8 @@ mod tests {
     #[test]
     fn test_update_power_controls_message() {
         let mut app = get_test_app();
-
-        let msg = power_controls::Message::FormTextChanged("20".to_string());
-        let _task = app.update(Message::PageMessage(PageMessage::PowerControlsMessage(msg)));
+        let msg = crate::pages::PowerControlsMessage::FormTextChanged("30".to_string());
+        let _task = app.update(Message::Page(PageMessage::PowerControlsMessage(msg)));
 
         // The message is forwarded to power_controls.update()
         // We can't easily verify internal state without exposing it,
@@ -1213,7 +1222,7 @@ mod tests {
                 ends_at: now + 3600 + (i * 100),
             };
             let msg = TimerMessage::Created(Ok(timer));
-            let _task = app.update(Message::TimerMessage(msg));
+            let _task = app.update(Message::Timer(msg));
         }
 
         assert_eq!(app.active_timers.len(), 3);
@@ -1228,7 +1237,7 @@ mod tests {
             ends_at: now - 1,
         };
         let msg = TimerMessage::Created(Ok(expired));
-        let _task = app.update(Message::TimerMessage(msg));
+        let _task = app.update(Message::Timer(msg));
 
         assert_eq!(app.active_timers.len(), 4);
 
