@@ -61,6 +61,7 @@
 
 pub mod database;
 pub mod filters;
+pub mod power;
 pub mod resources;
 pub mod time;
 pub mod ui;

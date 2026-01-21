@@ -4,6 +4,18 @@ use crate::utils::database::repository::Repository;
 use anyhow::{Result, anyhow};
 use sqlx::{FromRow, sqlite::SqlitePool};
 
+/// Messages related to timer operations.
+///
+/// Represents results from timer creation and retrieval operations. Timers
+/// are stored in the database and tracked for countdown display and notifications.
+#[derive(Debug, Clone)]
+pub enum TimerMessage {
+    /// Result of creating a new timer (contains the created Timer on success)
+    Created(Result<Timer, String>),
+    /// Result of fetching all active timers from the database
+    ActiveFetched(Result<Vec<Timer>, String>),
+}
+
 #[derive(Debug, Clone, FromRow)]
 pub struct Timer {
     pub id: i64,

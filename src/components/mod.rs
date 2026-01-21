@@ -9,9 +9,9 @@
 //! ## List Components
 //!
 //! - [`ListHeader`] - Header component for list sections with title and optional action button
-//! - ['ListHeaderForm'] - Form for of ListHeader for embedding input fields
-//! - ['List'] - Generic list component for displaying collections of items
-//! - ['ListItem'] - Individual item component for use within ElementList
+//! - [`ListHeaderForm`] - Form for of `ListHeader` for embedding input fields
+//! - [`List`] - Generic list component for displaying collections of items
+//! - [`ListItem`] - Individual item component for use within lists
 //!
 //! ## Input Components
 //!
