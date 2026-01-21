@@ -1,17 +1,17 @@
 //! Reusable UI components for the Chronomancer application.
 //!
 //! This module provides a collection of reusable components that can be composed
-//! to build the application's user interface. Components follow libcosmic's patterns
+//! to build the application's user interface. Components follow libcosmic's patterns (at least those that exist...)
 //! and are designed to be generic, type-safe, and easy to integrate.
 //!
 //! # Component Categories
 //!
 //! ## List Components
 //!
-//! - [`ListHeader`] - Header component for list sections with title and optional action button
-//! - [`ListHeaderForm`] - Form for of `ListHeader` for embedding input fields
-//! - [`List`] - Generic list component for displaying collections of items
-//! - [`ListItem`] - Individual item component for use within lists
+//! List-related components are organized in the [`list`] submodule.
+//!
+//! - [`list::ListHeader`] - Header component for list sections with title and optional action button
+//! - [`list::ListHeaderForm`] - Form variant of ListHeader for embedding input fields
 //!
 //! ## Input Components
 //!
@@ -39,9 +39,12 @@
 //! 4. **Documented** - Each component and method includes arguments, return values, and possible errors. Jury is still out on whether or not these will end up being doctests
 
 pub mod icon_button;
-pub mod list_header;
+pub mod list;
 pub mod power_form;
 pub mod radio_components;
+pub mod types;
 
 pub use icon_button::ToggleIconRadio;
+pub use list::{ListHeader, ListHeaderForm};
 pub use power_form::PowerForm;
+pub use types::{Context, Layout};

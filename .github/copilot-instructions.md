@@ -349,7 +349,8 @@ This project is a **learning exercise**. When assisting:
 ## Resources
 
 ### Project Documentation
-- **Architectural Idioms:** `.journal/architectural-idioms.md` - Component-to-page message flow and other patterns
+- **Architectural Idioms:** `.github/architectural-idioms.md` - Component-to-page message flow and other patterns
+- **Component Builder Pattern:** `.github/component-builder-pattern.md` - Builder pattern guide for configurable components
 - **Flatpak Notes:** `.journal/flatpak.md` - Future Flatpak support plans (v2)
 - **Iterator Patterns:** `.journal/iterator-patterns.md`
 - **Doctest Guide:** `.journal/doctest-guide.md` - Writing effective Rust doctests in Chronomancer

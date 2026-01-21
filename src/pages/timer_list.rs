@@ -1,7 +1,7 @@
 use cosmic::Element;
 
 use crate::{
-    components::list_header::{ListHeader, Message as ListHeaderMessage},
+    components::list::{ListHeader, header::Message as ListHeaderMessage},
     fl,
 };
 
