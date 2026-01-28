@@ -20,6 +20,7 @@ use crate::{
         AppMessage as Message, DatabaseMessage, PageMessage, PowerMessage, TimerMessage,
     },
     config::Config,
+    fl,
     models::{Timer, timer::TimerType},
     pages::{PowerControls, TimerList},
     utils::{
@@ -107,7 +108,7 @@ impl Application for AppModel {
             suspend_inhibitor: None,
             active_timers: vec![],
             power_controls: PowerControls::default(),
-            timer_list: TimerList::default(),
+            timer_list: TimerList::applet(fl!("title-timers")),
         };
 
         (

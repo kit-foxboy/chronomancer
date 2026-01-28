@@ -1,12 +1,10 @@
 use cosmic::Element;
 
-use crate::{
-    components::list::{ListHeader, header::Message as ListHeaderMessage},
-    fl,
-};
+use crate::components::list::{ListHeader, header::Message as ListHeaderMessage};
 
 /// Page level messages for the timer list page
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub enum Message {
     ListHeaderMessage(ListHeaderMessage),
     TimerFormSubmitted,
@@ -25,12 +23,6 @@ pub struct Page {
     list_header: ListHeader,
 }
 
-impl Default for Page {
-    fn default() -> Self {
-        Self::new(fl!("title-timers"))
-    }
-}
-
 impl Page {
     /// Creates a new timer list page with the given title
     ///
@@ -41,7 +33,20 @@ impl Page {
     /// The newly created timer list page
     pub fn new(title: impl Into<String>) -> Self {
         Self {
-            list_header: ListHeader::new(title, true),
+            list_header: ListHeader::new(title).with_add_button(),
+        }
+    }
+
+    /// Creates a new timer list page configured for applet context
+    ///
+    /// # Arguments
+    /// - `title` - The title of the timer list page
+    ///
+    /// # Returns
+    /// The newly created timer list page with applet configuration
+    pub fn applet(title: impl Into<String>) -> Self {
+        Self {
+            list_header: ListHeader::applet_with_add(title),
         }
     }
 

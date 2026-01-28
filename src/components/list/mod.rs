@@ -3,6 +3,7 @@
 //! This module provides components for building list interfaces, including
 //! headers, forms, items, and container components.
 //!
+//!
 //! # Components
 //!
 //! - [`ListHeader`] - Header component for list sections with title and optional action button
@@ -16,7 +17,7 @@
 //!
 //! # Builder Pattern with Variants
 //!
-//! Components use **Rust enums** for behavioral variants and the **builder pattern**
+//! After some experimenting, here's the thing I settled on. Components use **Rust enums** for behavioral variants and the **builder pattern**
 //! for configuration. This separates:
 //!
 //! - **Behavioral context** (`Context::App` vs `Context::Applet`) - Different interaction patterns
@@ -24,10 +25,13 @@
 //!
 //! ## Example Usage
 //!
+//! ### ListHeader
+//!
 //! ```ignore
-//! // App context (default) with compact layout
-//! ListHeader::new("Timers")
-//!     .with_add_button();
+//! use crate::components::{Context, Layout, ListHeader};
+//!
+//! // Minimal - all defaults (App context, Comfortable layout)
+//! ListHeader::new("Timers");
 //!
 //! // App with spacious layout and text button
 //! ListHeader::new("Active Timers")
@@ -38,7 +42,39 @@
 //! // Applet context with icon-only button
 //! ListHeader::new("Recent")
 //!     .context(Context::Applet)
+//!     .layout(Layout::Compact)
 //!     .with_add_button();
+//!
+//! // Or use the preset constructors
+//! ListHeader::applet_with_add("Timers");
+//! ListHeader::app_with_add("Timers", "Add Timer");
+//! ```
+//!
+//! ### ListHeaderForm
+//!
+//! ```ignore
+//! use crate::components::{Context, Layout};
+//! use crate::components::list::ListHeaderForm;
+//!
+//! // Minimal form
+//! ListHeaderForm::new("Add Timer");
+//!
+//! // Applet form with placeholder
+//! ListHeaderForm::new("New Timer")
+//!     .context(Context::Applet)
+//!     .layout(Layout::Compact)
+//!     .placeholder("Timer name...")
+//!     .value(&self.input_value);
+//!
+//! // App form with submit button text
+//! ListHeaderForm::new("Create Reminder")
+//!     .layout(Layout::Spacious)
+//!     .placeholder("Reminder name")
+//!     .submit_text("Create");
+//!
+//! // Or use the preset constructors
+//! ListHeaderForm::applet("New Timer");
+//! ListHeaderForm::app_with_submit("New Timer", "Create");
 //! ```
 //!
 //! ## Key Differences
@@ -55,7 +91,7 @@
 //! - Can adapt layout to window size
 //! - Navigation patterns available
 //!
-//! ## Benefits
+//! ## Benefits (in theory)
 //!
 //! - **Flexible** - Both behavioral AND visual configuration
 //! - **Type-safe** - Enums prevent invalid combinations (no booleans)
@@ -64,15 +100,10 @@
 //!
 //! # Design Notes
 //!
-//! List components prioritize:
-//! - **Context-aware behavior** - Different patterns for applets vs. apps
-//! - **Efficient layouts** - Respect space constraints
-//! - **Clear hierarchy** - Visual distinction between headers, items, and actions
-//! - **Composability** - Easy to combine with other components
-//!
 //! See `.github/component-builder-pattern.md` for detailed implementation guide.
 
 pub mod header;
+#[allow(dead_code)]
 pub mod header_form;
 
 pub use header::ListHeader;

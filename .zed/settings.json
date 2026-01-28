@@ -2,12 +2,13 @@
   "lsp": {
     "rust-analyzer": {
       "initialization_options": {
+        // "procMacro": {
+        //   "ignored": {
+        //     "i18n-embed-fl": ["fl"],
+        //   },
+        // },
         "diagnostics": {
-          "disabled": [
-            "unresolved-proc-macro",
-            "macro-error",
-            "macro-backtrace",
-          ],
+          "disabled": ["unresolved-proc-macro", "macro-error"],
         },
       },
     },

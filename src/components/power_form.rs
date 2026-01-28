@@ -12,13 +12,14 @@
 use cosmic::{
     Element,
     iced::{Alignment, Length::Fill, widget::column},
+    theme,
     theme::Button,
     widget::{ComboBox, TextInput, button, combo_box},
 };
 
 use crate::{
     fl,
-    utils::{Padding, TimeUnit, filters, ui::Gaps},
+    utils::{TimeUnit, filters},
 };
 
 /// System power management operations.
@@ -345,6 +346,7 @@ impl PowerForm {
     where
         Message: Clone + 'static,
     {
+        let spacing = theme::active().cosmic().spacing;
         let on_submit_clone = on_submit.clone();
         column![
             TextInput::new(&self.placeholder_text, &self.input_value)
@@ -363,8 +365,8 @@ impl PowerForm {
                 .class(Button::Suggested)
         ]
         .align_x(Alignment::Center)
-        .spacing(Gaps::s())
-        .padding(Padding::horizontal(24))
+        .spacing(spacing.space_s)
+        .padding([0, spacing.space_l, 0, spacing.space_l])
         .into()
     }
 

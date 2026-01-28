@@ -3,12 +3,9 @@ use crate::{
         PowerForm, ToggleIconRadio, power_form::PowerOperation, radio_components::RadioComponents,
     },
     fl,
-    utils::{
-        TimeUnit,
-        ui::{Gaps, Padding},
-    },
+    utils::TimeUnit,
 };
-use cosmic::{Action, Element, Task, iced::Alignment, iced_widget::column, widget::Space};
+use cosmic::{Action, Element, Task, iced::Alignment, iced_widget::column, theme, widget::Space};
 
 /// Messages for the power controls page
 #[derive(Debug, Clone)]
@@ -103,10 +100,13 @@ impl Page {
             Space::new(0, 0).into()
         };
 
+        let spacing = theme::active().cosmic().spacing;
+        let xs = spacing.space_xs;
+
         column![power_buttons, form]
             .align_x(Alignment::Center)
-            .padding(Padding::no_bottom())
-            .spacing(Gaps::s())
+            .padding([xs, xs, 0, xs])
+            .spacing(spacing.space_s)
             .into()
     }
 
