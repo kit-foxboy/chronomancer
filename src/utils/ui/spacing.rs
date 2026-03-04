@@ -1,18 +1,15 @@
-//! UI sizing utilities for consistent visual design.
+//! UI spacing utilities for consistent visual design.
 //!
-//! This module provides constants for component sizing throughout the
-//! Chronomancer UI.
+//! This module provides the [`Spacing`] struct for grouping layout-related
+//! values throughout the Chronomancer UI.
 //!
 //! # Design Philosophy
 //!
-//! Fixed dimensions for UI components that need consistent sizing across the
-//! application. These values are chosen to work well with the COSMIC design
-//! system. Magic numbers are illegal in themes and you will be purged with a thunder hammer if you use them you filthy FILTHY heretic!
+//! Rather than passing spacing, padding, and text size around as separate
+//! values, [`Spacing`] bundles them together so components can compute their
+//! layout values once and use them consistently.
 //!
-//! # Usage
-//!
-//! Use `ComponentSize` constants for fixed dimensions (icon sizes, button heights).
-//! For spacing and padding, use cosmic theme values directly:
+//! For the underlying spacing primitives, use cosmic theme values directly:
 //!
 //! ```rust,ignore
 //! use cosmic::theme;
@@ -22,76 +19,33 @@
 //! let medium_gap = spacing.space_m;
 //! ```
 
-/// Standard component sizing constants.
+/// Bundled layout values for a component at a given density.
 ///
-/// Provides fixed dimensions for UI components that need consistent sizing
-/// across the application. These values are chosen to work well with the
-/// COSMIC design system.
+/// `Spacing` groups the spacing, padding, and text size that a component
+/// needs to render itself consistently. Components typically compute one
+/// instance of this struct from the active cosmic theme and then apply
+/// all three values in their `view` method.
 ///
 /// # Examples
 ///
 /// ```rust
-/// use chronomancer::utils::ui::ComponentSize;
+/// use chronomancer::utils::ui::spacing::Spacing;
 ///
-/// // Get standard icon button height
-/// let height = ComponentSize::ICON_BUTTON_HEIGHT;
-/// assert_eq!(height, 48.0);
+/// let layout = Spacing {
+///     gap: 4,
+///     padding: [4, 8, 4, 8],
+///     text_size: 14,
+/// };
 ///
-/// // Get standard icon size
-/// let icon_size = ComponentSize::ICON_SIZE;
-/// assert_eq!(icon_size, 36);
+/// assert_eq!(layout.gap, 4);
+/// assert_eq!(layout.padding, [4, 8, 4, 8]);
+/// assert_eq!(layout.text_size, 14);
 /// ```
-pub struct ComponentSize;
-
-impl ComponentSize {
-    /// Standard height for icon buttons in pixels.
-    ///
-    /// This provides enough space for comfortable touch targets and
-    /// visual balance with COSMIC's design language.
-    pub const ICON_BUTTON_HEIGHT: f32 = 48.0;
-
-    /// Standard size for icons within buttons in pixels.
-    ///
-    /// This size works well with the button height and provides good
-    /// visual hierarchy.
-    ///
-    /// # Examples
-    ///
-    /// ```rust,no_run
-    /// use chronomancer::utils::ui::ComponentSize;
-    /// use cosmic::widget::icon;
-    ///
-    /// # #[derive(Clone)] enum Message {}
-    /// # fn example() -> cosmic::Element<'static, Message> {
-    ///     icon::from_name("system-suspend-symbolic")
-    ///     .size(ComponentSize::ICON_SIZE)
-    ///     .icon()
-    ///     .into()
-    /// # }
-    /// ```
-    pub const ICON_SIZE: u16 = 36;
-
-    /// Text sizes for labels and inputs
-    ///
-    /// Use text sizes here so the app UI can be adjusted on the fly without having
-    /// to fiddle with components.
-    ///
-    /// # Examples
-    ///```rust,no_run
-    /// use chronomancer::utils::ui::ComponentSize;
-    /// use cosmic::widget::TextInput;
-    ///
-    /// # #[derive(Clone)] enum Message {}
-    /// # fn example() -> cosmic::Element<'static, Message> {
-    ///     TextInput::new(&self.placeholder_text, &self.input_value)
-    ///     .size(ComponentSize::FONT_SIZE_DEFAULT);
-    /// # }
-    /// ```
-    ///
-    #[allow(dead_code)]
-    pub const FONT_SIZE_DEFAULT: u16 = 14;
-    #[allow(dead_code)]
-    pub const FONT_SIZE_SMALL: u16 = 12;
-    #[allow(dead_code)]
-    pub const HEADER_FONT_SIZE: u16 = 16;
+pub struct Spacing {
+    /// Gap between child elements in a row or column.
+    pub gap: u16,
+    /// Padding applied to the component container as `[top, right, bottom, left]`.
+    pub padding: [u16; 4],
+    /// Font size for the primary text in the component.
+    pub text_size: u16,
 }

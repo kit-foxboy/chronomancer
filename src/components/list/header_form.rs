@@ -5,7 +5,7 @@
 //!
 //! # Builder Pattern
 //!
-//! ListHeaderForm uses the builder pattern for flexible configuration:
+//! `ListHeaderForm` uses the builder pattern for flexible configuration:
 //!
 //! ```ignore
 //! // Minimal - all defaults (App context, Comfortable layout)
@@ -36,9 +36,13 @@ use cosmic::{
     widget::{button, icon, text_input},
 };
 
-use crate::components::{Context, Layout};
+use crate::utils::ui::Spacing;
+use crate::{
+    components::{Context, Layout},
+    utils::ui::ComponentSize,
+};
 
-/// Messages emitted by the ListHeaderForm component.
+/// Messages emitted by the `ListHeaderForm` component.
 #[derive(Debug, Clone)]
 pub enum Message {
     /// The text input value changed.
@@ -86,7 +90,7 @@ pub struct ListHeaderForm {
 }
 
 impl ListHeaderForm {
-    /// Creates a new ListHeaderForm with App context and Comfortable layout.
+    /// Creates a new `ListHeaderForm` with App context and Comfortable layout.
     ///
     /// # Arguments
     ///
@@ -120,6 +124,7 @@ impl ListHeaderForm {
     /// let form = ListHeaderForm::new("Add Timer")
     ///     .context(Context::Applet);
     /// ```
+    #[must_use]
     pub fn context(mut self, context: Context) -> Self {
         self.context = context;
         self
@@ -135,6 +140,7 @@ impl ListHeaderForm {
     /// let form = ListHeaderForm::new("Add Timer")
     ///     .layout(Layout::Spacious);
     /// ```
+    #[must_use]
     pub fn layout(mut self, layout: Layout) -> Self {
         self.layout = layout;
         self
@@ -148,6 +154,7 @@ impl ListHeaderForm {
     /// let form = ListHeaderForm::new("Add Timer")
     ///     .placeholder("Enter timer name...");
     /// ```
+    #[must_use]
     pub fn placeholder(mut self, placeholder: impl Into<String>) -> Self {
         self.placeholder = Some(placeholder.into());
         self
@@ -163,6 +170,7 @@ impl ListHeaderForm {
     /// let form = ListHeaderForm::new("Add Timer")
     ///     .value(&self.timer_name);
     /// ```
+    #[must_use]
     pub fn value(mut self, value: impl Into<String>) -> Self {
         self.value = value.into();
         self
@@ -179,6 +187,7 @@ impl ListHeaderForm {
     /// let form = ListHeaderForm::new("Add Timer")
     ///     .submit_text("Create");
     /// ```
+    #[must_use]
     pub fn submit_text(mut self, text: impl Into<String>) -> Self {
         self.submit_text = Some(text.into());
         self
@@ -194,45 +203,58 @@ impl ListHeaderForm {
     /// let form = ListHeaderForm::new("Add Timer")
     ///     .show_cancel(false);
     /// ```
+    #[must_use]
     pub fn show_cancel(mut self, show: bool) -> Self {
         self.show_cancel = show;
         self
     }
 
     /// Returns layout-specific spacing, padding, and text size from cosmic theme.
-    fn layout_values(&self) -> (u16, [u16; 4], u16) {
+    fn layout_values(&self) -> Spacing {
         let cosmic_spacing = theme::active().cosmic().spacing;
 
         match self.layout {
             Layout::Compact => {
-                let spacing = cosmic_spacing.space_xs;
+                let gap = cosmic_spacing.space_xs;
                 let padding = [
                     cosmic_spacing.space_xxs,
                     cosmic_spacing.space_xs,
                     cosmic_spacing.space_xxs,
                     cosmic_spacing.space_xs,
                 ];
-                (spacing, padding, 13)
+                Spacing {
+                    gap,
+                    padding,
+                    text_size: ComponentSize::FONT_SIZE_SMALL,
+                }
             }
             Layout::Comfortable => {
-                let spacing = cosmic_spacing.space_s;
+                let gap = cosmic_spacing.space_s;
                 let padding = [
                     cosmic_spacing.space_xs,
                     cosmic_spacing.space_s,
                     cosmic_spacing.space_xs,
                     cosmic_spacing.space_s,
                 ];
-                (spacing, padding, 14)
+                Spacing {
+                    gap,
+                    padding,
+                    text_size: ComponentSize::FONT_SIZE_DEFAULT,
+                }
             }
             Layout::Spacious => {
-                let spacing = cosmic_spacing.space_m;
+                let gap = cosmic_spacing.space_m;
                 let padding = [
                     cosmic_spacing.space_s,
                     cosmic_spacing.space_m,
                     cosmic_spacing.space_s,
                     cosmic_spacing.space_m,
                 ];
-                (spacing, padding, 15)
+                Spacing {
+                    gap,
+                    padding,
+                    text_size: ComponentSize::FONT_SIZE_DEFAULT,
+                }
             }
         }
     }
@@ -241,8 +263,9 @@ impl ListHeaderForm {
     ///
     /// The rendering adapts based on context and configuration:
     /// - Applet → icon-only buttons
-    /// - App + submit_text → icon + text submit button
-    /// - App (no submit_text) → icon-only submit button
+    /// - App + `submit_text` → icon + text submit button
+    /// - App (no `submit_text`) → icon-only submit button
+    #[must_use]
     pub fn view(&self) -> Element<'_, Message> {
         match (self.context, self.submit_text.as_ref()) {
             (Context::Applet, _) => {
@@ -262,11 +285,11 @@ impl ListHeaderForm {
 
     /// Renders form with icon-only buttons.
     fn view_with_icon_buttons(&self) -> Element<'_, Message> {
-        let (spacing, padding, text_size) = self.layout_values();
+        let layout_values = self.layout_values();
         let placeholder = self.placeholder.as_deref().unwrap_or("Enter value...");
 
         let input = text_input(placeholder, &self.value)
-            .size(text_size)
+            .size(layout_values.text_size)
             .on_input(Message::InputChanged)
             .on_submit(|_| Message::Submit)
             .width(Fill);
@@ -288,18 +311,18 @@ impl ListHeaderForm {
 
         form_row
             .align_y(Center)
-            .spacing(spacing)
-            .padding(padding)
+            .spacing(layout_values.gap)
+            .padding(layout_values.padding)
             .into()
     }
 
     /// Renders form with icon + text submit button (App context).
     fn view_with_text_submit(&self, submit_text: String) -> Element<'_, Message> {
-        let (spacing, padding, text_size) = self.layout_values();
+        let layout_values = self.layout_values();
         let placeholder = self.placeholder.as_deref().unwrap_or("Enter value...");
 
         let input = text_input(placeholder, &self.value)
-            .size(text_size)
+            .size(layout_values.text_size)
             .on_input(Message::InputChanged)
             .on_submit(|_| Message::Submit)
             .width(Fill);
@@ -321,8 +344,8 @@ impl ListHeaderForm {
 
         form_row
             .align_y(Center)
-            .spacing(spacing)
-            .padding(padding)
+            .spacing(layout_values.gap)
+            .padding(layout_values.padding)
             .into()
     }
 }

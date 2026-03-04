@@ -7,7 +7,9 @@
 //! # Components
 //!
 //! - [`ListHeader`] - Header component for list sections with title and optional action button
-//! - [`ListHeaderForm`] - Form variant of ListHeader for embedding input fields
+//! - [`ListHeaderForm`] - Form variant of `ListHeader` for embedding input fields
+//! - [`ListContainer`] - Component for wrapping and styling a list of items
+//! - [`ListItem`] - Component representing an individual item in a list
 //!
 //! # Component Organization
 //!
@@ -18,14 +20,14 @@
 //! # Builder Pattern with Variants
 //!
 //! After some experimenting, here's the thing I settled on. Components use **Rust enums** for behavioral variants and the **builder pattern**
-//! for configuration. This separates:
+//! for configuration. I considered a factory pattern approach but this seems more natural and consistent with cosmic's design philosophy. This separates:
 //!
 //! - **Behavioral context** (`Context::App` vs `Context::Applet`) - Different interaction patterns
 //! - **Space constraints** (`Layout::Compact` vs `Layout::Spacious`) - Visual density
 //!
 //! ## Example Usage
 //!
-//! ### ListHeader
+//! ### `ListHeader`
 //!
 //! ```ignore
 //! use crate::components::{Context, Layout, ListHeader};
@@ -50,7 +52,7 @@
 //! ListHeader::app_with_add("Timers", "Add Timer");
 //! ```
 //!
-//! ### ListHeaderForm
+//! ### `ListHeaderForm`
 //!
 //! ```ignore
 //! use crate::components::{Context, Layout};
@@ -102,9 +104,12 @@
 //!
 //! See `.github/component-builder-pattern.md` for detailed implementation guide.
 
+#[allow(dead_code)]
 pub mod header;
 #[allow(dead_code)]
 pub mod header_form;
+#[allow(dead_code)]
+pub mod item;
 
 pub use header::ListHeader;
 pub use header_form::ListHeaderForm;

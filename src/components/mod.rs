@@ -11,7 +11,7 @@
 //! List-related components are organized in the [`list`] submodule.
 //!
 //! - [`list::ListHeader`] - Header component for list sections with title and optional action button
-//! - [`list::ListHeaderForm`] - Form variant of ListHeader for embedding input fields
+//! - [`list::ListHeaderForm`] - Form variant of `ListHeader` for embedding input fields
 //!
 //! ## Input Components
 //!

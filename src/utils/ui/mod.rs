@@ -1,6 +1,7 @@
 //! UI utilities for consistent visual design.
 //!
-//! This module provides utilities for sizing throughout the Chronomancer UI.
+//! This module provides utilities for sizing and spacing throughout the
+//! Chronomancer UI.
 //!
 //! # Design Philosophy
 //!
@@ -9,9 +10,13 @@
 //!
 //! # Usage
 //!
-//! Use `ComponentSize` constants for fixed dimensions (icon sizes, button heights).
+//! Use [`ComponentSize`] constants for fixed dimensions (icon sizes, button
+//! heights, font sizes).
 //!
-//! For spacing and padding, use cosmic theme values directly:
+//! Use [`Spacing`] to bundle layout values computed from the active cosmic
+//! theme.
+//!
+//! For raw spacing primitives, use cosmic theme values directly:
 //!
 //! ```rust,ignore
 //! use cosmic::theme;
@@ -21,6 +26,8 @@
 //! let medium_gap = spacing.space_m;
 //! ```
 
+pub mod sizing;
 pub mod spacing;
 
-pub use spacing::ComponentSize;
+pub use sizing::ComponentSize;
+pub use spacing::Spacing;

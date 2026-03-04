@@ -261,7 +261,7 @@ fn build_timer_card(timer: &Timer) -> Element<Message> {
 
 ### Message Passing Strategy
 
-**See `.github/architectural-idioms.md` for the full component-to-page message flow pattern.**
+**See `.journal/architectural-idioms.md` and `.journal/message-architecture.md` for the full component-to-page message flow pattern.**
 
 Components return `Option<PageMessage>` to signal page-level events. Pages handle these by recursively calling their own `update` method:
 
@@ -349,8 +349,7 @@ This project is a **learning exercise**. When assisting:
 ## Resources
 
 ### Project Documentation
-- **Architectural Idioms:** `.github/architectural-idioms.md` - Component-to-page message flow and other patterns
-- **Component Builder Pattern:** `.github/component-builder-pattern.md` - Builder pattern guide for configurable components
+- **Architectural Idioms:** `.journal/architectural-idioms.md` - Component-to-page message flow and other patterns
 - **Flatpak Notes:** `.journal/flatpak.md` - Future Flatpak support plans (v2)
 - **Iterator Patterns:** `.journal/iterator-patterns.md`
 - **Doctest Guide:** `.journal/doctest-guide.md` - Writing effective Rust doctests in Chronomancer
@@ -381,14 +380,6 @@ just fmt
 # Install system-wide
 sudo just install
 ```
-
-### Flatpak Support
-
-Flatpak manifests exist in `flatpak/` but are **not fully supported in v1**. These are for future COSMIC Flatpak repository submission.
-
-For v1, use standard installation methods above.
-
-**See `.github/flatpak.md` for future Flatpak plans.**
 
 ## Testing
 

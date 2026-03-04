@@ -9,7 +9,7 @@
 //!
 //! # Builder Pattern
 //!
-//! ListHeader uses the builder pattern for flexible configuration:
+//! `ListHeader` uses the builder pattern for flexible configuration:
 //!
 //! ```ignore
 //! // Minimal - all defaults (App context, Comfortable layout)
@@ -38,9 +38,12 @@ use cosmic::{
     widget::{Space, button, icon, text},
 };
 
-use crate::components::{Context, Layout};
+use crate::{
+    components::{Context, Layout},
+    utils::ui::{ComponentSize, spacing::Spacing},
+};
 
-/// Messages emitted by the ListHeader component.
+/// Messages emitted by the `ListHeader` component.
 #[derive(Debug, Clone)]
 pub enum Message {
     /// The add button was pressed.
@@ -75,7 +78,7 @@ pub struct ListHeader {
 }
 
 impl ListHeader {
-    /// Creates a new ListHeader with App context and Comfortable layout.
+    /// Creates a new `ListHeader` with App context and Comfortable layout.
     ///
     /// # Arguments
     ///
@@ -107,6 +110,7 @@ impl ListHeader {
     /// let header = ListHeader::new("Timers")
     ///     .context(Context::Applet);
     /// ```
+    #[must_use]
     pub fn context(mut self, context: Context) -> Self {
         self.context = context;
         self
@@ -122,6 +126,7 @@ impl ListHeader {
     /// let header = ListHeader::new("Timers")
     ///     .layout(Layout::Spacious);
     /// ```
+    #[must_use]
     pub fn layout(mut self, layout: Layout) -> Self {
         self.layout = layout;
         self
@@ -131,7 +136,7 @@ impl ListHeader {
     ///
     /// The button style depends on context:
     /// - **App**: Icon + text if `button_text()` is set, otherwise icon-only
-    /// - **Applet**: Always icon-only (button_text ignored)
+    /// - **Applet**: Always icon-only (`button_text` ignored)
     ///
     /// # Example
     ///
@@ -139,6 +144,7 @@ impl ListHeader {
     /// let header = ListHeader::new("Timers")
     ///     .with_add_button();
     /// ```
+    #[must_use]
     pub fn with_add_button(mut self) -> Self {
         self.show_button = true;
         self
@@ -156,45 +162,58 @@ impl ListHeader {
     ///     .with_add_button()
     ///     .button_text("Add Timer");
     /// ```
+    #[must_use]
     pub fn button_text(mut self, text: impl Into<String>) -> Self {
         self.button_text = Some(text.into());
         self
     }
 
     /// Returns layout-specific spacing, padding, and text size from cosmic theme.
-    fn layout_values(&self) -> (u16, [u16; 4], u16) {
+    fn layout_values(&self) -> Spacing {
         let cosmic_spacing = theme::active().cosmic().spacing;
 
         match self.layout {
             Layout::Compact => {
-                let spacing = cosmic_spacing.space_xs;
+                let gap = cosmic_spacing.space_xs;
                 let padding = [
                     cosmic_spacing.space_xxs,
                     cosmic_spacing.space_xs,
                     cosmic_spacing.space_xxs,
                     cosmic_spacing.space_xs,
                 ];
-                (spacing, padding, 13)
+                Spacing {
+                    gap,
+                    padding,
+                    text_size: ComponentSize::FONT_SIZE_SMALL,
+                }
             }
             Layout::Comfortable => {
-                let spacing = cosmic_spacing.space_s;
+                let gap = cosmic_spacing.space_s;
                 let padding = [
                     cosmic_spacing.space_xs,
                     cosmic_spacing.space_s,
                     cosmic_spacing.space_xs,
                     cosmic_spacing.space_s,
                 ];
-                (spacing, padding, 14)
+                Spacing {
+                    gap,
+                    padding,
+                    text_size: ComponentSize::FONT_SIZE_DEFAULT,
+                }
             }
             Layout::Spacious => {
-                let spacing = cosmic_spacing.space_m;
+                let gap = cosmic_spacing.space_m;
                 let padding = [
                     cosmic_spacing.space_s,
                     cosmic_spacing.space_m,
                     cosmic_spacing.space_s,
                     cosmic_spacing.space_m,
                 ];
-                (spacing, padding, 15)
+                Spacing {
+                    gap,
+                    padding,
+                    text_size: ComponentSize::FONT_SIZE_DEFAULT,
+                }
             }
         }
     }
@@ -206,14 +225,13 @@ impl ListHeader {
     /// - App + button + text → icon + text button
     /// - App + button (no text) → icon-only button
     /// - No button → title only
+    #[must_use]
     pub fn view(&self) -> Element<'_, Message> {
         match (self.context, self.show_button, self.button_text.as_ref()) {
-            // Applet: always icon-only button
-            (Context::Applet, true, _) => self.view_with_icon_button(),
             // App: icon + text button when text provided
             (Context::App, true, Some(btn_text)) => self.view_with_text_button(btn_text.clone()),
-            // App: icon-only button when no text
-            (Context::App, true, None) => self.view_with_icon_button(),
+            // Applet: always icon-only button; App: icon-only when no text
+            (Context::Applet, true, _) | (Context::App, true, None) => self.view_with_icon_button(),
             _ => {
                 // No button
                 self.view_title_only()
@@ -223,8 +241,8 @@ impl ListHeader {
 
     /// Renders header with icon-only add button.
     fn view_with_icon_button(&self) -> Element<'_, Message> {
-        let (spacing, padding, text_size) = self.layout_values();
-        let title = text(&self.title).size(text_size);
+        let layout_values = self.layout_values();
+        let title = text(&self.title).size(layout_values.text_size);
 
         let add_button = button::icon(icon::from_name("list-add-symbolic"))
             .class(Icon)
@@ -233,15 +251,15 @@ impl ListHeader {
 
         row![title, Space::with_width(Fill), add_button]
             .align_y(Center)
-            .spacing(spacing)
-            .padding(padding)
+            .spacing(layout_values.gap)
+            .padding(layout_values.padding)
             .into()
     }
 
     /// Renders header with icon + text add button (App context).
     fn view_with_text_button(&self, btn_text: String) -> Element<'_, Message> {
-        let (spacing, padding, text_size) = self.layout_values();
-        let title = text(&self.title).size(text_size);
+        let layout_values = self.layout_values();
+        let title = text(&self.title).size(layout_values.text_size);
 
         let add_button = button::text(btn_text)
             .leading_icon(icon::from_name("list-add-symbolic"))
@@ -250,20 +268,20 @@ impl ListHeader {
 
         row![title, Space::with_width(Fill), add_button]
             .align_y(Center)
-            .spacing(spacing)
-            .padding(padding)
+            .spacing(layout_values.gap)
+            .padding(layout_values.padding)
             .into()
     }
 
     /// Renders header with title only (no button).
     fn view_title_only(&self) -> Element<'_, Message> {
-        let (spacing, padding, text_size) = self.layout_values();
-        let title = text(&self.title).size(text_size);
+        let layout_values = self.layout_values();
+        let title = text(&self.title).size(layout_values.text_size);
 
         row![title]
             .align_y(Center)
-            .spacing(spacing)
-            .padding(padding)
+            .spacing(layout_values.gap)
+            .padding(layout_values.padding)
             .into()
     }
 }

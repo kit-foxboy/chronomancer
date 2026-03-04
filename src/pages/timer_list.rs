@@ -24,19 +24,6 @@ pub struct Page {
 }
 
 impl Page {
-    /// Creates a new timer list page with the given title
-    ///
-    /// # Arguments
-    /// - `title` - The title of the timer list page
-    ///
-    /// # Returns
-    /// The newly created timer list page
-    pub fn new(title: impl Into<String>) -> Self {
-        Self {
-            list_header: ListHeader::new(title).with_add_button(),
-        }
-    }
-
     /// Creates a new timer list page configured for applet context
     ///
     /// # Arguments
@@ -58,7 +45,8 @@ impl Page {
         self.list_header.view().map(Message::ListHeaderMessage)
     }
 
-    pub fn update(&self, message: Message) {
+    #[allow(clippy::unused_self)]
+    pub fn update(&mut self, message: Message) {
         match message {
             Message::ListHeaderMessage(msg) => match msg {
                 ListHeaderMessage::AddButtonPressed => {
