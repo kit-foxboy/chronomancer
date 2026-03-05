@@ -11,7 +11,7 @@
 //! 2. Apply filtering rules
 //! 3. Return `Option<String>` — `None` means "reject this input entirely"
 //!
-//! # Usage with TextInput
+//! # Usage with `TextInput`
 //!
 //! ```rust,no_run
 //! use chronomancer::utils::filters::filter_positive_integer;
