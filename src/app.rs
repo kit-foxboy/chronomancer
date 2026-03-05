@@ -151,7 +151,7 @@ impl Application for AppModel {
 
             let timer_list = self
                 .timer_list
-                .view()
+                .view(&self.active_timers)
                 .map(PageMessage::TimerListMessage)
                 .map(Message::Page);
 

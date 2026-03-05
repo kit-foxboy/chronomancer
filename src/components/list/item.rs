@@ -192,23 +192,23 @@ impl ListItem {
     ///     .view(vec![edit]);
     /// ```
     #[must_use]
-    pub fn view<'a, Message: 'static>(
-        &'a self,
-        actions: Vec<Element<'a, Message>>,
-    ) -> Element<'a, Message> {
+    pub fn view<Message: 'static>(
+        self,
+        actions: Vec<Element<'_, Message>>,
+    ) -> Element<'_, Message> {
         // Get layout-specific values for spacing, padding, and text size
         let layout_values = self.layout_values();
 
         // Build the text column with title and optional description
-        let mut text_column = column![text(&self.title).size(layout_values.text_size)];
+        let mut text_column = column![text(self.title).size(layout_values.text_size)];
 
-        if let Some(desc) = &self.description {
+        if let Some(desc) = self.description {
             text_column = text_column.push(
                 text(desc).size(layout_values.text_size - 2), // Slightly smaller for description
             );
         }
 
-        let text_content: Element<'a, Message> = text_column
+        let text_content: Element<'_, Message> = text_column
             .spacing(layout_values.gap / 2)
             .width(Fill)
             .into();
@@ -217,8 +217,8 @@ impl ListItem {
         let mut content_row = row![];
 
         // Leading icon
-        if let Some(icon_name) = &self.icon {
-            content_row = content_row.push(icon::from_name(icon_name.as_str()));
+        if let Some(icon_name) = self.icon {
+            content_row = content_row.push(icon::from_name(icon_name));
         }
 
         // Add text content

@@ -1,6 +1,9 @@
-use cosmic::Element;
+use cosmic::{Element, cosmic_theme::Spacing, iced_widget::column, theme};
 
-use crate::components::list::{ListHeader, header::Message as ListHeaderMessage};
+use crate::{
+    components::list::{ListHeader, header::Message as ListHeaderMessage, item::ListItem},
+    models::Timer,
+};
 
 /// Page level messages for the timer list page
 #[derive(Debug, Clone)]
@@ -41,8 +44,21 @@ impl Page {
     ///
     /// # Returns
     /// An Element representing the timer list page
-    pub fn view(&self) -> Element<'_, Message> {
-        self.list_header.view().map(Message::ListHeaderMessage)
+    pub fn view(&self, timers: &[Timer]) -> Element<'_, Message> {
+        let Spacing { space_xs, .. } = theme::active().cosmic().spacing;
+        let header = self.list_header.view().map(Message::ListHeaderMessage);
+        let items: Vec<Element<'_, Message>> = timers
+            .iter()
+            .map(|timer| {
+                let actions: Vec<Element<'_, Message>> = vec![]; // TODO: add actions for each timer
+                ListItem::new(&timer.description)
+                    // TODO: decide how to display the remaining time and whether to include it in the description or as a separate field
+                    // .description()
+                    .icon("alarm-symbolic")
+                    .view(actions)
+            })
+            .collect();
+        column![header].extend(items).spacing(space_xs).into()
     }
 
     #[allow(clippy::unused_self)]

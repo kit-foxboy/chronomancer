@@ -86,14 +86,13 @@ impl ComponentSize {
     /// # #[derive(Clone)] enum Message {}
     /// # fn example() -> cosmic::Element<'static, Message> {
     ///     TextInput::new("placeholder", "value")
-    ///     .size(ComponentSize::FONT_SIZE_DEFAULT);
+    ///     .size(ComponentSize::FONT_SIZE_DEFAULT)
+    ///     .into()
     /// # }
     /// ```
-    #[allow(dead_code)]
     pub const FONT_SIZE_DEFAULT: u16 = 14;
 
     /// Small font size for secondary text and compact layouts.
-    #[allow(dead_code)]
     pub const FONT_SIZE_SMALL: u16 = 12;
 
     /// Large font size for headers and emphasis.

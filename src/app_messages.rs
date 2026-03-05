@@ -42,9 +42,10 @@
 //! ```rust
 //! use chronomancer::{app_messages::AppMessage, pages::{PageMessage, PowerControlsMessage}};
 //!
-//! // Page message converts through PageMessage wrapper
+//! // Page message converts through PageMessage wrapper (two-step chain)
 //! let page_msg = PowerControlsMessage::ToggleStayAwake;
-//! let app_msg: AppMessage = page_msg.into();
+//! let wrapped: PageMessage = page_msg.into();
+//! let app_msg: AppMessage = wrapped.into();
 //!
 //! // Verify the conversion chain
 //! match app_msg {

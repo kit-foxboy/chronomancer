@@ -1,66 +1,59 @@
-//! Text input filter functions for validation and formatting.
+//! Text input filters for validating and sanitizing user input.
 //!
-//! This module provides reusable filter functions that can be used to validate
-//! and format text input. These are designed to be used with libcosmic's
-//! `TextInput` component or any text input handling.
+//! These filters are designed for use with cosmic's `TextInput::on_input` callback
+//! pattern, where returning `None` rejects the input and `Some(String)` accepts it
+//! (potentially modified).
 //!
-//! # Design Philosophy
+//! # Design Pattern
 //!
-//! These are simple, pure functions that:
-//! - Take an input string
-//! - Return `Some(String)` if valid (possibly filtered/formatted)
-//! - Return `None` if invalid
+//! Filters follow a consistent pattern:
+//! 1. Accept raw input as `&str`
+//! 2. Apply filtering rules
+//! 3. Return `Option<String>` — `None` means "reject this input entirely"
 //!
-//! The calling code decides what to do with invalid input (ignore it, show error, etc.).
+//! # Usage with TextInput
+//!
+//! ```rust,no_run
+//! use chronomancer::utils::filters::filter_positive_integer;
+//!
+//! // In a cosmic TextInput callback:
+//! // TextInput::new("Enter number", &self.value)
+//! //     .on_input(|s| {
+//! //         filter_positive_integer(&s)
+//! //             .map(Message::InputChanged)
+//! //             .unwrap_or(Message::InputRejected)
+//! //     })
+//! ```
+//!
+//! # Available Filters
+//!
+//! - [`filter_positive_integer`] - Only digits, must be > 0
+//! - [`filter_alphabetic`] - Only alphabetic characters
+//! - [`filter_alphanumeric`] - Only alphanumeric characters
 //!
 //! # Examples
 //!
-//! ## Basic usage in a component
-//!
-//! ```rust
-//! use chronomancer::utils::filters;
-//!
-//! struct MyForm {
-//!     count: String,
-//! }
-//!
-//! impl MyForm {
-//!     pub fn handle_input(&mut self, new_text: &str) {
-//!         if let Some(filtered) = filters::filter_positive_integer(new_text) {
-//!             self.count = filtered;
-//!         }
-//!         // If None, we just ignore the input (keep old value)
-//!     }
-//! }
-//! ```
-//!
-//! ## Direct usage in message handler
-//!
 //! ```rust,no_run
-//! use chronomancer::utils::filters;
+//! use chronomancer::utils::filters::{filter_positive_integer, filter_alphabetic, filter_alphanumeric};
 //!
-//! # struct App { value: String }
-//! # enum Message { TextChanged(String) }
-//! # impl App {
-//! fn update(&mut self, message: Message) {
-//!     match message {
-//!         Message::TextChanged(text) => {
-//!             if let Some(filtered) = filters::filter_positive_integer(&text) {
-//!                 self.value = filtered;
-//!             }
-//!         }
-//!     }
-//! }
-//! # }
+//! // Positive integers only
+//! assert_eq!(filter_positive_integer("42"), Some("42".to_string()));
+//! assert_eq!(filter_positive_integer("0"), None);
+//!
+//! // Alphabetic only
+//! assert_eq!(filter_alphabetic("Hello"), Some("Hello".to_string()));
+//! assert_eq!(filter_alphabetic("123"), None);
+//!
+//! // Alphanumeric only
+//! assert_eq!(filter_alphanumeric("Hello123"), Some("Hello123".to_string()));
+//! assert_eq!(filter_alphanumeric("!@#"), None);
 //! ```
 
-/// Filters input to only accept positive integers (> 0).
+/// Filters input to only allow positive integers (value > 0).
 ///
-/// This function:
-/// - Accepts empty strings (returns `Some("")`)
-/// - Parses input as `u32` and rejects 0
-/// - Normalizes the input by re-formatting the parsed number
-/// - Rejects negative numbers, decimals, and non-numeric input
+/// Empty strings are accepted (returns `Some("")`) to allow clearing input
+/// fields. Non-empty input is parsed as `u32` — zero and unparseable values
+/// are rejected.
 ///
 /// # Arguments
 ///
@@ -76,15 +69,16 @@
 /// ```rust
 /// use chronomancer::utils::filters::filter_positive_integer;
 ///
-/// // Valid positive integers
 /// assert_eq!(filter_positive_integer("42"), Some("42".to_string()));
 /// assert_eq!(filter_positive_integer("007"), Some("7".to_string())); // Normalized
 ///
-/// // Empty string is allowed
+/// // Empty string is allowed (for clearing input)
 /// assert_eq!(filter_positive_integer(""), Some("".to_string()));
 ///
-/// // Invalid inputs
+/// // Zero is not positive
 /// assert_eq!(filter_positive_integer("0"), None);
+///
+/// // Non-numeric rejected
 /// assert_eq!(filter_positive_integer("-5"), None);
 /// assert_eq!(filter_positive_integer("abc"), None);
 /// assert_eq!(filter_positive_integer("3.14"), None);
@@ -122,12 +116,11 @@ pub fn filter_positive_integer(input: &str) -> Option<String> {
 ///
 /// assert_eq!(filter_alphabetic("Hello"), Some("Hello".to_string()));
 /// assert_eq!(filter_alphabetic("Hello123"), Some("Hello".to_string()));
-/// assert_eq!(filter_alphabetic(""), Some("".to_string()));
 ///
-/// // All non-alphabetic removed
-/// assert_eq!(filter_alphabetic("123!@#"), Some("".to_string()));
+/// // Empty string has no alphabetic chars
+/// assert_eq!(filter_alphabetic(""), None);
 ///
-/// // all characters filtered out returns None
+/// // All non-alphabetic characters filtered out returns None
 /// assert_eq!(filter_alphabetic("123!@#"), None);
 /// ```
 #[must_use]
@@ -150,6 +143,7 @@ pub fn filter_alphabetic(input: &str) -> Option<String> {
 /// # Returns
 ///
 /// - `Some(String)` - String containing only alphanumeric characters
+/// - `None` - If result would be empty (when input has no alphanumeric chars)
 ///
 /// # Examples
 ///
@@ -158,11 +152,13 @@ pub fn filter_alphabetic(input: &str) -> Option<String> {
 ///
 /// assert_eq!(filter_alphanumeric("Hello123"), Some("Hello123".to_string()));
 /// assert_eq!(filter_alphanumeric("Hello 123!"), Some("Hello123".to_string()));
-/// assert_eq!(filter_alphanumeric("user_name"), Some("username".to_string()));
 ///
-/// // all characters filtered out returns None
-/// assert_eq!(filter_alphanumeric("!@#"), None);
-///  ```
+/// // Empty string has no alphanumeric chars
+/// assert_eq!(filter_alphanumeric(""), None);
+///
+/// // All non-alphanumeric characters filtered out returns None
+/// assert_eq!(filter_alphanumeric("!@# $%^"), None);
+/// ```
 #[must_use]
 #[allow(dead_code)]
 pub fn filter_alphanumeric(input: &str) -> Option<String> {
