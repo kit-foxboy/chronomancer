@@ -1,7 +1,12 @@
-use cosmic::{Element, cosmic_theme::Spacing, iced_widget::column, theme};
+use cosmic::{Element, cosmic_theme::Spacing, iced_widget::column, theme, widget::Space};
 
 use crate::{
-    components::list::{ListHeader, header::Message as ListHeaderMessage, item::ListItem},
+    components::list::{
+        ListHeader, ListHeaderForm,
+        header::Message as ListHeaderMessage,
+        header_form::{self, Message as ListHeaderFormMessage},
+        item::ListItem,
+    },
     models::Timer,
 };
 
@@ -10,6 +15,7 @@ use crate::{
 #[allow(dead_code)]
 pub enum Message {
     ListHeaderMessage(ListHeaderMessage),
+    ListHeaderFormMessage(ListHeaderFormMessage),
     TimerFormSubmitted,
     PauseTimer(usize),
     ResumeTimer(usize),
@@ -24,6 +30,8 @@ pub enum Message {
 /// and the `ListForm` component for adding new timers.
 pub struct Page {
     list_header: ListHeader,
+    list_header_form: ListHeaderForm,
+    show_list_header_form: bool,
 }
 
 impl Page {
@@ -37,6 +45,8 @@ impl Page {
     pub fn applet(title: impl Into<String>) -> Self {
         Self {
             list_header: ListHeader::applet_with_add(title),
+            list_header_form: ListHeaderForm::applet("Add Timer"),
+            show_list_header_form: false,
         }
     }
 
@@ -47,6 +57,16 @@ impl Page {
     pub fn view(&self, timers: &[Timer]) -> Element<'_, Message> {
         let Spacing { space_xs, .. } = theme::active().cosmic().spacing;
         let header = self.list_header.view().map(Message::ListHeaderMessage);
+
+        //conditionally show the header form
+        let header_form: Element<'_, Message> = if self.show_list_header_form {
+            self.list_header_form
+                .view()
+                .map(Message::ListHeaderFormMessage)
+        } else {
+            Space::new(0, 0).into()
+        };
+
         let items: Vec<Element<'_, Message>> = timers
             .iter()
             .map(|timer| {
@@ -58,7 +78,11 @@ impl Page {
                     .view(actions)
             })
             .collect();
-        column![header].extend(items).spacing(space_xs).into()
+
+        column![header, header_form]
+            .extend(items)
+            .spacing(space_xs)
+            .into()
     }
 
     #[allow(clippy::unused_self)]
@@ -66,8 +90,19 @@ impl Page {
         match message {
             Message::ListHeaderMessage(msg) => match msg {
                 ListHeaderMessage::AddButtonPressed => {
-                    // Handle add button pressed
-                    println!("Add button pressed");
+                    self.show_list_header_form = true;
+                }
+            },
+            Message::ListHeaderFormMessage(msg) => match msg {
+                ListHeaderFormMessage::InputChanged(input) => {
+                    // Handle input change in the list header form
+                }
+                ListHeaderFormMessage::Submit => {
+                    self.show_list_header_form = false;
+                    // Handle form submission, e.g., add a new timer
+                }
+                ListHeaderFormMessage::Cancel => {
+                    self.show_list_header_form = false;
                 }
             },
             Message::TimerFormSubmitted => {
