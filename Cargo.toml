@@ -3,7 +3,7 @@ name = "chronomancer"
 version = "0.2.0"
 edition = "2024"
 license = "MIT"
-description = "An applet fonaging system timers"
+description = "An applet for managing system timers"
 repository = "https://github.com/kit-foxboy/chronomancer"
 
 [[bin]]
@@ -57,3 +57,13 @@ features = [
 # libcosmic = { path = "../libcosmic" }
 # cosmic-config = { path = "../libcosmic/cosmic-config" }
 # cosmic-theme = { path = "../libcosmic/cosmic-theme" }
+
+[profile.dev]
+opt-level = 0
+incremental = true
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = true
