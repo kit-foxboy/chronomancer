@@ -129,7 +129,7 @@ impl Page {
                 Task::none()
             }
             Message::FormTimeUnitChanged(unit) => {
-                self.power_form.time_unit = unit;
+                self.power_form.set_time_unit(unit);
                 Task::none()
             }
             Message::FormSubmitPressed => self.handle_form_submit(),
@@ -201,8 +201,7 @@ impl Page {
             return Task::none();
         }
 
-        let value = self.power_form.input_value.parse::<i32>().unwrap()
-            * self.power_form.time_unit.to_seconds_multiplier();
+        let value = self.power_form.duration_seconds().unwrap();
 
         if let Some(index) = self.power_buttons.selected {
             let operation = PowerOperation::from_index(index);
@@ -276,13 +275,13 @@ mod tests {
     fn test_form_text_input() {
         let mut page = get_test_page();
         let _ = page.update(Message::FormTextChanged("15".to_string()));
-        assert_eq!(page.power_form.input_value, "15");
+        assert_eq!(page.power_form.input_value(), "15");
     }
 
     #[test]
     fn test_form_time_unit_change() {
         let mut page = get_test_page();
         let _ = page.update(Message::FormTimeUnitChanged(TimeUnit::Minutes));
-        assert_eq!(page.power_form.time_unit, TimeUnit::Minutes);
+        assert_eq!(page.power_form.selected_time_unit(), &TimeUnit::Minutes);
     }
 }

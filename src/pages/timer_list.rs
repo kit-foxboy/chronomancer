@@ -1,11 +1,11 @@
-use cosmic::{Element, cosmic_theme::Spacing, iced_widget::column, theme, widget::Space};
+use cosmic::{
+    Action, Element, Task, cosmic_theme::Spacing, iced_widget::column, theme, widget::Space,
+};
 
 use crate::{
     components::list::{
-        ListHeader, ListHeaderForm,
-        header::Message as ListHeaderMessage,
-        header_form::{self, Message as ListHeaderFormMessage},
-        item::ListItem,
+        ListHeader, ListHeaderForm, header::Message as ListHeaderMessage,
+        header_form::Message as ListHeaderFormMessage, item::ListItem,
     },
     models::Timer,
 };
@@ -16,7 +16,7 @@ use crate::{
 pub enum Message {
     ListHeaderMessage(ListHeaderMessage),
     ListHeaderFormMessage(ListHeaderFormMessage),
-    TimerFormSubmitted,
+    TimerFormSubmitted { name: String, duration_seconds: i32 },
     PauseTimer(usize),
     ResumeTimer(usize),
     DeleteTimer(usize),
@@ -45,7 +45,9 @@ impl Page {
     pub fn applet(title: impl Into<String>) -> Self {
         Self {
             list_header: ListHeader::applet_with_add(title),
-            list_header_form: ListHeaderForm::applet("Add Timer"),
+            list_header_form: ListHeaderForm::applet("Add Timer")
+                .name_placeholder("Timer name...")
+                .duration_placeholder("Duration..."),
             show_list_header_form: false,
         }
     }
@@ -86,39 +88,76 @@ impl Page {
     }
 
     #[allow(clippy::unused_self)]
-    pub fn update(&mut self, message: Message) {
+    pub fn update(&mut self, message: Message) -> Task<Action<Message>> {
         match message {
             Message::ListHeaderMessage(msg) => match msg {
                 ListHeaderMessage::AddButtonPressed => {
                     self.show_list_header_form = true;
+                    Task::none()
                 }
             },
             Message::ListHeaderFormMessage(msg) => match msg {
-                ListHeaderFormMessage::InputChanged(input) => {
-                    // Handle input change in the list header form
+                ListHeaderFormMessage::NameInputChanged(input) => {
+                    self.list_header_form.handle_name_input(&input);
+                    Task::none()
+                }
+                ListHeaderFormMessage::DurationInputChanged(input) => {
+                    self.list_header_form.handle_duration_input(&input);
+                    Task::none()
+                }
+                ListHeaderFormMessage::TimeUnitChanged(unit) => {
+                    self.list_header_form.set_time_unit(unit);
+                    Task::none()
                 }
                 ListHeaderFormMessage::Submit => {
-                    self.show_list_header_form = false;
-                    // Handle form submission, e.g., add a new timer
+                    if let Some(submission) = self.list_header_form.handle_submit() {
+                        let name = submission.name.clone();
+                        let duration_seconds = submission.duration_seconds;
+                        self.list_header_form.clear();
+                        self.show_list_header_form = false;
+
+                        // Emit a page-level message so the app can create the timer
+                        self.update(Message::TimerFormSubmitted {
+                            name,
+                            duration_seconds,
+                        })
+                    } else {
+                        Task::none()
+                    }
                 }
                 ListHeaderFormMessage::Cancel => {
+                    self.list_header_form.clear();
                     self.show_list_header_form = false;
+
+                    Task::none()
                 }
             },
-            Message::TimerFormSubmitted => {
-                // Handle timer form submission
+            Message::TimerFormSubmitted {
+                name,
+                duration_seconds,
+            } => {
+                // TODO: create the timer via the app-level handler
+                println!("New timer submitted: name='{name}', duration={duration_seconds}s");
+                Task::done(Action::App(Message::TimerFormSubmitted {
+                    name,
+                    duration_seconds,
+                }))
             }
             Message::PauseTimer(_index) => {
                 // Handle pausing timer at index
+                Task::none()
             }
             Message::ResumeTimer(_index) => {
                 // Handle resuming timer at index
+                Task::none()
             }
             Message::DeleteTimer(_index) => {
                 // Handle deleting timer at index
+                Task::none()
             }
             Message::ToggleRecurring(_index) => {
                 // Handle toggling recurring status of timer at index
+                Task::none()
             }
         }
     }

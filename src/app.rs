@@ -216,8 +216,7 @@ impl Application for AppModel {
             }
 
             Message::Page(PageMessage::TimerListMessage(msg)) => {
-                self.timer_list.update(msg);
-                Task::none()
+                self.handle_timer_list_message(msg)
             }
 
             Message::Database(msg) => self.handle_database_message(msg),
@@ -517,6 +516,49 @@ impl AppModel {
     ///
     /// # Future Expansion
     ///
+    /// Handles timer list page messages.
+    ///
+    /// Intercepts app-level actions (like form submission) and delegates
+    /// page-internal messages (input changes, toggle visibility) back to the page.
+    /// Follows the same routing pattern as `handle_power_controls_message`.
+    fn handle_timer_list_message(
+        &mut self,
+        message: crate::pages::TimerListMessage,
+    ) -> Task<Action<Message>> {
+        use crate::pages::TimerListMessage as TLMessage;
+        match message {
+            TLMessage::TimerFormSubmitted {
+                name,
+                duration_seconds,
+            } => {
+                let Some(database) = self.database.clone() else {
+                    eprintln!("Database not yet available");
+                    return Task::none();
+                };
+
+                let timer = Timer::new(duration_seconds, false, &TimerType::UserDefined(name));
+
+                Task::perform(
+                    async move {
+                        Timer::insert(database.pool(), &timer)
+                            .await
+                            .map_err(|e| e.to_string())
+                    },
+                    |result| Action::App(Message::Timer(TimerMessage::Created(result))),
+                )
+            }
+            // Let the page handle its own state updates
+            _ => self.timer_list.update(message).map(|action| match action {
+                Action::App(page_msg) => {
+                    Action::App(Message::Page(PageMessage::TimerListMessage(page_msg)))
+                }
+                Action::None => Action::None,
+                Action::Cosmic(cosmic_action) => Action::Cosmic(cosmic_action),
+                Action::DbusActivation(dbus_action) => Action::DbusActivation(dbus_action),
+            }),
+        }
+    }
+
     /// If additional pages are added (reminders, systemd timers), this pattern
     /// can be extended with similar routing functions for each page type.
     fn handle_power_controls_message(

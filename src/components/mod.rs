@@ -38,6 +38,7 @@
 //! 3. **Clone-able** - Components can be stored in application state
 //! 4. **Documented** - Each component and method includes arguments, return values, and possible errors. Jury is still out on whether or not these will end up being doctests
 
+pub mod form;
 pub mod icon_button;
 pub mod list;
 pub mod power_form;

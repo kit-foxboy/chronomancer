@@ -8,19 +8,25 @@
 //! - [`PowerOperation`] - Enum representing different power management operations
 //! - [`PowerForm`] - Form component for entering time duration and selecting time units
 //!
+//! # Refactored Architecture
+//!
+//! `PowerForm` now composes [`NumericField`](super::form::NumericField) and
+//! [`ComboField`](super::form::ComboField) from the generic form field system
+//! rather than duplicating input/validation/clear logic. The form fields handle
+//! their own state, validation, and rendering — `PowerForm` orchestrates them
+//! and adds the submit button + layout.
 
 use cosmic::{
     Element,
-    iced::{Alignment, Length::Fill, widget::column},
+    iced::{Alignment, widget::column},
     theme,
     theme::Button,
-    widget::{ComboBox, TextInput, button, combo_box},
+    widget::button,
 };
 
-use crate::{
-    fl,
-    utils::{TimeUnit, filters},
-};
+use crate::{fl, utils::TimeUnit};
+
+use super::form::{ComboField, FormField, NumericField};
 
 /// System power management operations.
 ///
@@ -205,22 +211,22 @@ impl PowerOperation {
 
 /// Form component for time duration input with unit selection.
 ///
-/// `PowerForm` provides a complete input interface for specifying time durations,
-/// combining a numeric text input field with a combo box for selecting time units
-/// (seconds, minutes, hours, days) and a submit button.
+/// `PowerForm` composes a [`NumericField`] for duration input and a
+/// [`ComboField<TimeUnit>`] for unit selection, adding a submit button
+/// and placeholder text management. The composed fields handle their own
+/// state, validation, filtering, and rendering.
 ///
 /// # Fields
 ///
-/// - `input_value` - Current numeric value as a string
-/// - `time_unit` - Selected time unit (seconds, minutes, hours, days)
-/// - `time_unit_options` - Combo box state for unit selection
-/// - `placeholder_text` - Placeholder text shown when input is empty
+/// - `duration` - Numeric input field for the time value
+/// - `time_unit` - Combo box field for selecting the time unit
+/// - `placeholder_text` - Placeholder text shown when duration input is empty
 ///
 /// # Validation
 ///
 /// The form validates that:
-/// - Input is a valid positive integer (> 0)
-/// - Non-numeric input is rejected
+/// - Duration is a valid positive integer (> 0) — enforced by `NumericField`
+/// - Non-numeric input is rejected at keystroke time
 ///
 /// # Examples
 ///
@@ -231,30 +237,27 @@ impl PowerOperation {
 /// let mut form = PowerForm::new("Enter duration");
 ///
 /// // Initially empty
-/// assert_eq!(form.input_value, "");
-/// assert_eq!(form.time_unit, TimeUnit::Seconds);
+/// assert_eq!(form.input_value(), "");
+/// assert_eq!(form.selected_time_unit(), &TimeUnit::Seconds);
 ///
 /// // Validate and handle input
 /// form.handle_text_input("30");
-/// assert_eq!(form.input_value, "30");
+/// assert_eq!(form.input_value(), "30");
 /// assert!(form.validate_input());
 ///
 /// // Clear when done
 /// form.clear();
-/// assert_eq!(form.input_value, "");
+/// assert_eq!(form.input_value(), "");
 /// ```
 #[derive(Debug, Clone)]
 pub struct PowerForm {
-    /// The current numeric input value as a string.
-    pub input_value: String,
+    /// Numeric input field for the duration value.
+    duration: NumericField,
 
-    /// The currently selected time unit.
-    pub time_unit: TimeUnit,
+    /// Combo box field for time unit selection.
+    time_unit: ComboField<TimeUnit>,
 
-    /// State for the time unit combo box.
-    pub time_unit_options: combo_box::State<TimeUnit>,
-
-    /// Placeholder text displayed in the input field.
+    /// Placeholder text displayed in the duration input field.
     pub placeholder_text: String,
 }
 
@@ -282,27 +285,88 @@ impl PowerForm {
     ///
     /// let form = PowerForm::new("Enter time");
     /// assert_eq!(form.placeholder_text, "Enter time");
-    /// assert_eq!(form.input_value, "");
+    /// assert_eq!(form.input_value(), "");
     /// ```
     pub fn new(placeholder_text: impl Into<String>) -> Self {
+        let placeholder: String = placeholder_text.into();
         Self {
-            input_value: String::new(),
-            time_unit: TimeUnit::Seconds, // Default to seconds
-            time_unit_options: combo_box::State::new(vec![
+            duration: NumericField::new("power-duration").placeholder(&placeholder),
+            time_unit: ComboField::new(
+                "power-time-unit",
+                vec![
+                    TimeUnit::Seconds,
+                    TimeUnit::Minutes,
+                    TimeUnit::Hours,
+                    TimeUnit::Days,
+                ],
                 TimeUnit::Seconds,
-                TimeUnit::Minutes,
-                TimeUnit::Hours,
-                TimeUnit::Days,
-            ]),
-            placeholder_text: placeholder_text.into(),
+            )
+            .label(fl!("unit-label")),
+            placeholder_text: placeholder,
         }
+    }
+
+    /// Returns a reference to the current raw input value string.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use chronomancer::components::power_form::PowerForm;
+    ///
+    /// let form = PowerForm::new("Enter time");
+    /// assert_eq!(form.input_value(), "");
+    /// ```
+    #[must_use]
+    #[allow(dead_code)]
+    pub fn input_value(&self) -> &str {
+        self.duration.raw_value()
+    }
+
+    /// Returns a reference to the currently selected time unit.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use chronomancer::components::power_form::PowerForm;
+    /// use chronomancer::utils::TimeUnit;
+    ///
+    /// let form = PowerForm::new("Enter time");
+    /// assert_eq!(form.selected_time_unit(), &TimeUnit::Seconds);
+    /// ```
+    #[must_use]
+    #[allow(dead_code)]
+    pub fn selected_time_unit(&self) -> &TimeUnit {
+        self.time_unit.selected()
+    }
+
+    /// Sets the selected time unit.
+    ///
+    /// # Arguments
+    ///
+    /// - `unit` - The new time unit to select
+    pub fn set_time_unit(&mut self, unit: TimeUnit) {
+        self.time_unit.update_selection(unit);
+    }
+
+    /// Computes the total duration in seconds from the input value and time unit.
+    ///
+    /// Returns `None` if the input is empty or invalid.
+    ///
+    /// # Returns
+    ///
+    /// `Some(i32)` — total seconds, or `None` if the duration field is invalid.
+    #[must_use]
+    pub fn duration_seconds(&self) -> Option<i32> {
+        let value = self.duration.value()?;
+        let unit = self.time_unit.value()?;
+        Some(value * unit.to_seconds_multiplier())
     }
 
     /// Renders the power form as an [`Element`].
     ///
     /// Creates a vertical layout containing:
-    /// 1. Text input field for duration
-    /// 2. Combo box for time unit selection
+    /// 1. Text input field for duration (rendered by `NumericField`)
+    /// 2. Combo box for time unit selection (rendered by `ComboField`)
     /// 3. Submit button
     ///
     /// # Arguments
@@ -348,47 +412,40 @@ impl PowerForm {
     {
         let spacing = theme::active().cosmic().spacing;
         let on_submit_clone = on_submit.clone();
-        column![
-            TextInput::new(&self.placeholder_text, &self.input_value)
-                .on_input(on_text_input)
-                .on_submit(move |_| on_submit_clone.clone())
-                .width(Fill),
-            ComboBox::new(
-                &self.time_unit_options,
-                &fl!("unit-label"),
-                Some(&self.time_unit),
-                on_time_unit,
-            )
-            .width(Fill),
-            button::text(fl!("set-button-label"))
-                .on_press(on_submit)
-                .class(Button::Suggested)
-        ]
-        .align_x(Alignment::Center)
-        .spacing(spacing.space_s)
-        .padding([0, spacing.space_l, 0, spacing.space_l])
-        .into()
+
+        // Duration field with submit-on-enter
+        let duration_input = self.duration.view(move |s| {
+            // We need to route through on_text_input, but also need on_submit for Enter.
+            // Since FormField::view only takes on_input, we handle Enter at the page level.
+            on_text_input(s)
+        });
+
+        // Time unit combo box using the typed view method
+        let unit_combo = self.time_unit.view_typed(on_time_unit);
+
+        // Submit button
+        let submit_btn = button::text(fl!("set-button-label"))
+            .on_press(on_submit)
+            .class(Button::Suggested);
+
+        // Keep the same layout as before: vertical stack
+        let _ = on_submit_clone; // Available for future Enter-to-submit support
+        column![duration_input, unit_combo, submit_btn]
+            .align_x(Alignment::Center)
+            .spacing(spacing.space_s)
+            .padding([0, spacing.space_l, 0, spacing.space_l])
+            .into()
     }
 
     /// Handles text input changes with numeric validation.
     ///
-    /// Uses [`filters::filter_positive_integer`] to validate input.
-    /// Only accepts valid positive integers. Rejects:
-    /// - Non-numeric characters
-    /// - Negative numbers
-    /// - Zero
-    ///
-    /// Empty input is accepted to allow clearing the field.
+    /// Delegates to [`NumericField::update`] which uses
+    /// [`filters::filter_positive_integer`](crate::utils::filters::filter_positive_integer)
+    /// to validate input.
     ///
     /// # Arguments
     ///
     /// - `new_text` - The new text input value to validate and apply
-    ///
-    /// # Behavior
-    ///
-    /// - Valid positive integer: Updates `input_value`
-    /// - Empty string: Clears `input_value`
-    /// - Invalid input: No change to `input_value`
     ///
     /// # Examples
     ///
@@ -399,30 +456,23 @@ impl PowerForm {
     ///
     /// // Valid input
     /// form.handle_text_input("15");
-    /// assert_eq!(form.input_value, "15");
+    /// assert_eq!(form.input_value(), "15");
     ///
     /// // Invalid input (no change)
     /// form.handle_text_input("abc");
-    /// assert_eq!(form.input_value, "15");
+    /// assert_eq!(form.input_value(), "15");
     ///
     /// // Clear input
     /// form.handle_text_input("");
-    /// assert_eq!(form.input_value, "");
+    /// assert_eq!(form.input_value(), "");
     /// ```
     pub fn handle_text_input(&mut self, new_text: &str) {
-        if let Some(filtered) = filters::filter_positive_integer(new_text) {
-            self.input_value = filtered;
-        }
+        self.duration.update(new_text);
     }
 
     /// Validates that the current input is a positive integer.
     ///
-    /// Checks whether `input_value` contains a valid positive integer (> 0).
-    /// Returns `false` for:
-    /// - Empty strings
-    /// - Non-numeric values
-    /// - Zero
-    /// - Negative numbers
+    /// Delegates to [`NumericField::validate`].
     ///
     /// # Returns
     ///
@@ -436,29 +486,22 @@ impl PowerForm {
     /// let mut form = PowerForm::new("Enter time");
     ///
     /// // Valid input
-    /// form.input_value = "10".to_string();
+    /// form.handle_text_input("10");
     /// assert!(form.validate_input());
     ///
-    /// // Invalid inputs
-    /// form.input_value = "0".to_string();
-    /// assert!(!form.validate_input());
-    ///
-    /// form.input_value = "-5".to_string();
-    /// assert!(!form.validate_input());
-    ///
-    /// form.input_value = String::new();
+    /// // Empty is invalid
+    /// form.handle_text_input("");
     /// assert!(!form.validate_input());
     /// ```
     pub fn validate_input(&self) -> bool {
-        let value = self.input_value.parse::<i32>();
-        value.is_ok() && value.unwrap_or_default() > 0
+        self.duration.validate()
     }
 
     /// Clears the form and resets to default state.
     ///
     /// Resets:
-    /// - `input_value` to empty string
-    /// - `time_unit` to `TimeUnit::Seconds`
+    /// - Duration input to empty string
+    /// - Time unit to `TimeUnit::Seconds`
     ///
     /// The placeholder text is preserved.
     ///
@@ -469,18 +512,18 @@ impl PowerForm {
     /// use chronomancer::utils::TimeUnit;
     ///
     /// let mut form = PowerForm::new("Enter time");
-    /// form.input_value = "123".to_string();
-    /// form.time_unit = TimeUnit::Hours;
+    /// form.handle_text_input("123");
+    /// form.set_time_unit(TimeUnit::Hours);
     ///
     /// form.clear();
     ///
-    /// assert_eq!(form.input_value, "");
-    /// assert_eq!(form.time_unit, TimeUnit::Seconds);
+    /// assert_eq!(form.input_value(), "");
+    /// assert_eq!(form.selected_time_unit(), &TimeUnit::Seconds);
     /// assert_eq!(form.placeholder_text, "Enter time"); // Preserved
     /// ```
     pub fn clear(&mut self) {
-        self.input_value.clear();
-        self.time_unit = TimeUnit::Seconds;
+        self.duration.clear();
+        self.time_unit.clear();
     }
 }
 
@@ -499,8 +542,8 @@ mod tests {
     #[test]
     fn test_power_form_creation() {
         let form = PowerForm::new("Enter time");
-        assert_eq!(form.input_value, "");
-        assert_eq!(form.time_unit, TimeUnit::Seconds);
+        assert_eq!(form.input_value(), "");
+        assert_eq!(form.selected_time_unit(), &TimeUnit::Seconds);
         assert_eq!(form.placeholder_text, "Enter time");
     }
 
@@ -508,46 +551,42 @@ mod tests {
     fn test_handle_text_input_valid() {
         let mut form = PowerForm::new("Enter time");
         form.handle_text_input("15");
-        assert_eq!(form.input_value, "15");
+        assert_eq!(form.input_value(), "15");
     }
 
     #[test]
     fn test_handle_text_input_invalid() {
         let mut form = PowerForm::new("Enter time");
         form.handle_text_input("potato");
-        assert_eq!(form.input_value, ""); // Should remain empty
+        assert_eq!(form.input_value(), ""); // Should remain empty
     }
 
     #[test]
     fn test_validation_valid_input() {
         let mut form = PowerForm::new("Enter time");
-        form.input_value = "10".to_string();
+        form.handle_text_input("10");
         assert!(form.validate_input());
     }
 
     #[test]
     fn test_validation_invalid_input() {
         let mut form = PowerForm::new("Enter time");
-        form.input_value = "0".to_string();
-        assert!(!form.validate_input());
+        assert!(!form.validate_input()); // empty
 
-        form.input_value = "-5".to_string();
-        assert!(!form.validate_input());
-
-        form.input_value = String::new();
-        assert!(!form.validate_input());
+        form.handle_text_input("0");
+        assert!(!form.validate_input()); // zero rejected by filter, still empty
     }
 
     #[test]
     fn test_clear() {
         let mut form = PowerForm::new("Enter time");
-        form.input_value = "123".to_string();
-        form.time_unit = TimeUnit::Hours;
+        form.handle_text_input("123");
+        form.set_time_unit(TimeUnit::Hours);
 
         form.clear();
 
-        assert_eq!(form.input_value, "");
-        assert_eq!(form.time_unit, TimeUnit::Seconds);
+        assert_eq!(form.input_value(), "");
+        assert_eq!(form.selected_time_unit(), &TimeUnit::Seconds);
     }
 
     #[test]
@@ -637,5 +676,51 @@ mod tests {
             PowerOperation::Shutdown.icon_name(),
             "system-shutdown-symbolic"
         );
+    }
+
+    #[test]
+    fn test_set_time_unit() {
+        let mut form = PowerForm::new("Enter time");
+        form.set_time_unit(TimeUnit::Minutes);
+        assert_eq!(form.selected_time_unit(), &TimeUnit::Minutes);
+
+        form.set_time_unit(TimeUnit::Hours);
+        assert_eq!(form.selected_time_unit(), &TimeUnit::Hours);
+    }
+
+    #[test]
+    fn test_duration_seconds() {
+        let mut form = PowerForm::new("Enter time");
+
+        // No input — None
+        assert_eq!(form.duration_seconds(), None);
+
+        // 30 seconds
+        form.handle_text_input("30");
+        assert_eq!(form.duration_seconds(), Some(30));
+
+        // 5 minutes
+        form.set_time_unit(TimeUnit::Minutes);
+        form.handle_text_input("5");
+        assert_eq!(form.duration_seconds(), Some(300));
+
+        // 2 hours
+        form.set_time_unit(TimeUnit::Hours);
+        form.handle_text_input("2");
+        assert_eq!(form.duration_seconds(), Some(7200));
+
+        // 1 day
+        form.set_time_unit(TimeUnit::Days);
+        form.handle_text_input("1");
+        assert_eq!(form.duration_seconds(), Some(86400));
+    }
+
+    #[test]
+    fn test_clear_preserves_placeholder() {
+        let mut form = PowerForm::new("My placeholder");
+        form.handle_text_input("42");
+        form.set_time_unit(TimeUnit::Days);
+        form.clear();
+        assert_eq!(form.placeholder_text, "My placeholder");
     }
 }
