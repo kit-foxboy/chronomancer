@@ -139,9 +139,10 @@ impl fmt::Display for TimeUnit {
 ///
 /// Converts a duration in seconds to a friendly display format:
 /// - Shows hours if the duration is >= 1 hour
-/// - Shows minutes if the duration is < 1 hour
+/// - Shows minutes if the duration is >= 1 minute and < 1 hour
+/// - Shows seconds if the duration is < 1 minute
 /// - Rounds down to whole units (no decimals)
-/// - Properly pluralizes (1 hour vs 2 hours)
+/// - Properly pluralizes (1 hour vs 2 hours, 1 second vs 2 seconds)
 ///
 /// # Arguments
 ///
@@ -167,7 +168,10 @@ impl fmt::Display for TimeUnit {
 ///
 /// // Rounds down to whole units
 /// assert_eq!(format_duration(5400), "1 hour");  // 1.5 hours → 1 hour
-/// assert_eq!(format_duration(30), "0 minutes"); // < 1 minute → 0 minutes
+///
+/// // Shows seconds when < 1 minute
+/// assert_eq!(format_duration(30), "30 seconds");
+/// assert_eq!(format_duration(1), "1 second");
 /// ```
 #[must_use]
 pub fn format_duration(seconds: i32) -> String {
@@ -176,9 +180,32 @@ pub fn format_duration(seconds: i32) -> String {
 
     if hours > 0 {
         format!("{} hour{}", hours, if hours == 1 { "" } else { "s" })
-    } else {
+    } else if minutes > 0 {
         format!("{} minute{}", minutes, if minutes == 1 { "" } else { "s" })
+    } else {
+        format!("{} second{}", seconds, if seconds == 1 { "" } else { "s" })
     }
+}
+
+/// Return the difference in timestamps in seconds
+///
+/// Used to determine how much time is left on a timer or how long a timer has been running.
+/// Takes a starting datetime as a Unix timestamp and compares it to the end time or now if NONE is provided,
+/// returning the difference in seconds.
+///
+/// The result is clamped to `0` — if `start` is in the past relative to `end`, this returns `0`
+/// rather than a negative value.# Arguments
+///
+/// - `start` - The starting datetime as a Unix timestamp (seconds since epoch)
+/// - `end` - An optional ending datetime as a Unix timestamp. If None, the current time will be used.
+///
+/// # Returns
+///
+/// The difference in seconds between the current time and the start time as an absolute value
+#[must_use]
+pub fn timestamp_diff_seconds(start: i64, end: Option<i64>) -> i32 {
+    let end = end.unwrap_or_else(|| chrono::Utc::now().timestamp());
+    (end - start).abs() as i32
 }
 
 #[cfg(test)]
@@ -210,8 +237,28 @@ mod tests {
 
     #[test]
     fn test_format_duration_less_than_minute() {
-        // Less than a minute shows as 0 minutes
-        assert_eq!(format_duration(30), "0 minutes");
-        assert_eq!(format_duration(59), "0 minutes");
+        // Less than a minute shows seconds
+        assert_eq!(format_duration(1), "1 second");
+        assert_eq!(format_duration(30), "30 seconds");
+        assert_eq!(format_duration(59), "59 seconds");
+    }
+
+    #[test]
+    fn test_time_unit_to_seconds_multiplier() {
+        assert_eq!(TimeUnit::Seconds.to_seconds_multiplier(), 1);
+        assert_eq!(TimeUnit::Minutes.to_seconds_multiplier(), 60);
+        assert_eq!(TimeUnit::Hours.to_seconds_multiplier(), 3600);
+        assert_eq!(TimeUnit::Days.to_seconds_multiplier(), 86400);
+    }
+
+    #[test]
+    fn test_timestamp_diff_seconds() {
+        let now = chrono::Utc::now().timestamp();
+        let past = now - 120; // 2 minutes ago
+        let future = now + 300; // 5 minutes in the future
+
+        assert_eq!(timestamp_diff_seconds(past, Some(now)), 120);
+        assert_eq!(timestamp_diff_seconds(now, Some(future)), 300);
+        assert_eq!(timestamp_diff_seconds(past, None), 120); // compares to current time
     }
 }

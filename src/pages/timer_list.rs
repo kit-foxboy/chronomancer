@@ -8,6 +8,7 @@ use crate::{
         header_form::Message as ListHeaderFormMessage, item::ListItem,
     },
     models::Timer,
+    utils::time,
 };
 
 /// Page level messages for the timer list page
@@ -73,9 +74,11 @@ impl Page {
             .iter()
             .map(|timer| {
                 let actions: Vec<Element<'_, Message>> = vec![]; // TODO: add actions for each timer
+                let end_time = timer.ends_at.clone();
                 ListItem::new(&timer.description)
-                    // TODO: decide how to display the remaining time and whether to include it in the description or as a separate field
-                    // .description()
+                    .description(time::format_duration(time::timestamp_diff_seconds(
+                        end_time, None,
+                    )))
                     .icon("alarm-symbolic")
                     .view(actions)
             })
