@@ -10,7 +10,7 @@
   </developer>
   <description>
     <p>Chronomancer is a simple and elegant applet for managing system timers. It allows users to keep their system awake or set times for suspend, shutdown, and logout.</p>
-    <p>Current Features</p>
+    <p>Current Features:</p>
     <ul>
       <li>Set timers for system actions such as suspend, shutdown, and logout</li>
       <li>Keep the system awake for a specified duration or infinitely</li>
