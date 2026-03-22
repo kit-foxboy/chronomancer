@@ -5,34 +5,48 @@
   <project_license>MIT</project_license>
   <name>Chronomancer</name>
   <summary>Applet for managing timers, reminders, and sleep overrides</summary>
+  <summary xml:lang="cs">Applet pro správu časovačů, upomínek a nastavení uspání</summary>
   <developer id="io.vulpapps">
     <name>Vulpine Interactive</name>
   </developer>
   <description>
     <p>Chronomancer is a simple and elegant applet for managing system timers. It allows users to keep their system awake or set times for suspend, shutdown, and logout.</p>
-    <p>Current Features</p>
+    <p xml:lang="cs">Chronomancer je jednoduchý a elegantní applet pro správu systémových časovačů. Umožňuje uživatelům udržet systém probuzený nebo nastavit časy pro uspání, vypnutí či odhlášení.</p>
+    <p>Current Features:</p>
+    <p xml:lang="cs">Aktuální funkce:</p>
     <ul>
       <li>Set timers for system actions such as suspend, shutdown, and logout</li>
+      <li xml:lang="cs">Nastavení časovačů pro systémové akce, jako je uspání, vypnutí a odhlášení</li>
       <li>Keep the system awake for a specified duration or infinitely</li>
+      <li xml:lang="cs">Udržení systému probuzeného po určitou dobu nebo neomezeně</li>
       <li>Intuitive user interface for easy timer management</li>
+      <li xml:lang="cs">Intuitivní uživatelské rozhraní pro snadnou správu časovačů</li>
     </ul>
     <p>Upcoming Features:</p>
+    <p xml:lang="cs">Plánované funkce:</p>
     <ul>
       <li>Create multiple timers with custom names and durations</li>
+      <li xml:lang="cs">Vytváření více časovačů s vlastními názvy a délkami trvání</li>
       <li>Edit existing timers</li>
+      <li xml:lang="cs">Úprava stávajících časovačů</li>
       <li>Delete timers when no longer needed</li>
+      <li xml:lang="cs">Odstraňování časovačů, když už nejsou potřeba</li>
       <li>Set up recurring timers (i.e. reminders)</li>
+      <li xml:lang="cs">Nastavení opakujících se časovačů (např. upomínky)</li>
     </ul>
     <p>Chronomancer is a useful utility applet for anyone who frequently schedules system actions.</p>
+    <p xml:lang="cs">Chronomancer je užitečný applet pro každého, kdo často plánuje systémové akce.</p>
   </description>
   <screenshots>
     <screenshot type="default">
-      <image>https://github.com/kit-foxboy/chronomancer/raw/main/resources/screenshots/chronomancer-0.1.0-main.png</image>
+      <image>https://github.com/kit-foxboy/chronomancer/raw/main/resources/screenshots/chronomancer-main.png</image>
       <caption>Chronomancer main popup showing power override controls</caption>
+      <caption xml:lang="cs">Hlavní okno aplikace Chronomancer zobrazující ovládání napájení</caption>
     </screenshot>
     <screenshot>
-      <image>https://github.com/kit-foxboy/chronomancer/raw/main/resources/screenshots/stay-awake-0.1.0.png</image>
+      <image>https://github.com/kit-foxboy/chronomancer/raw/main/resources/screenshots/stay-awake.png</image>
       <caption>Stay awake button in action, showing the status in your panel or dock</caption>
+      <caption xml:lang="cs">Tlačítko „Udržovat probuzené“ v akci, zobrazující stav na panelu nebo doku</caption>
     </screenshot>
   </screenshots>
   <url type="vcs-browser">https://github.com/kit-foxboy/chronomancer</url>
@@ -57,6 +71,12 @@
     <keyword>systemd</keyword>
     <keyword>sleep</keyword>
     <keyword>cosmic</keyword>
+    
+    <keyword xml:lang="cs">časovač</keyword>
+    <keyword xml:lang="cs">upomínka</keyword>
+    <keyword xml:lang="cs">připomínka</keyword>
+    <keyword xml:lang="cs">odpočet</keyword>
+    <keyword xml:lang="cs">uspání</keyword>
   </keywords>
    <releases>
     <release version="0.1.0" date="2024-11-20">

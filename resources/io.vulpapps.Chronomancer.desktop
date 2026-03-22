@@ -1,6 +1,7 @@
 [Desktop Entry]
 Name=Chronomancer
 Comment=An applet for creating and managing system timers
+Comment[cs]=Applet pro vytváření a správu systémových časovačů
 Type=Application
 Icon=io.vulpapps.Chronomancer
 Exec=chronomancer
@@ -8,6 +9,7 @@ Terminal=false
 StartupNotify=true
 Categories=Utility;
 Keywords=Timer;Reminder;Countdown;Systemd;Sleep;COSMIC;
+Keywords[cs]=Časovač;Připomínka;Upomínka;Odpočet;Systemd;Uspání;COSMIC;
 MimeType=
 NoDisplay=true
 X-CosmicApplet=true
